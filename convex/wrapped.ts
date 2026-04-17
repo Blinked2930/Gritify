@@ -2,6 +2,7 @@ import { action, internalMutation, internalQuery, query } from "./_generated/ser
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { GoogleGenerativeAI, SchemaType, Schema } from "@google/generative-ai";
+import { Doc } from "./_generated/dataModel";
 
 // 1. Gather the Data
 export const gatherWrappedData = internalQuery({
@@ -73,7 +74,6 @@ export const generateWrapped = action({
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
     
-    // Explicitly define this as a Schema object so TypeScript doesn't panic
     const responseSchema: Schema = {
       type: SchemaType.OBJECT,
       properties: {
@@ -128,7 +128,7 @@ export const generateWrapped = action({
 // 4. Fetch Existing Insights
 export const getMyWrapped = query({
   args: {},
-  handler: async (ctx) => {
+  handler: async (ctx): Promise<Doc<"wrappedInsights"> | null> => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return null;
 
