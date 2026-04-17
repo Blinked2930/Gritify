@@ -1,7 +1,7 @@
 import { action, internalMutation, internalQuery, query } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
-import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
+import { GoogleGenerativeAI, SchemaType, Schema } from "@google/generative-ai";
 
 // 1. Gather the Data
 export const gatherWrappedData = internalQuery({
@@ -73,7 +73,8 @@ export const generateWrapped = action({
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
     
-    const responseSchema = {
+    // Explicitly define this as a Schema object so TypeScript doesn't panic
+    const responseSchema: Schema = {
       type: SchemaType.OBJECT,
       properties: {
         aiSummary: { 
