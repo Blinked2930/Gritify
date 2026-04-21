@@ -6,10 +6,15 @@ import { api } from "@/convex/_generated/api";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Sparkles, Droplets, BookOpen, Activity, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 
 export default function WrappedDashboard() {
   const existingWrapped = useQuery(api.wrapped.getMyWrapped);
   const generateWrapped = useAction(api.wrapped.generateWrapped);
+  const user = useQuery(api.logs.getMe);
+  const searchParams = useSearchParams();
+  const isTest = searchParams.get("test") === "true";
   
   const [isGenerating, setIsGenerating] = useState(false);
   const [loadingText, setLoadingText] = useState("Initializing Gemini Matrix...");
@@ -38,11 +43,42 @@ export default function WrappedDashboard() {
   };
 
   // If Convex is still checking auth/db, show a generic spinner
-  if (existingWrapped === undefined) {
+  if (existingWrapped === undefined || user === undefined) {
     return (
       <div className="min-h-screen bg-grit-obsidian flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-grit-purple animate-spin" />
       </div>
+    );
+  }
+
+  // Calculate current day
+  let currentDay = 1;
+  const now = new Date();
+  now.setHours(now.getHours() - 2);
+  if (user?.challengeStartDate) {
+    const start = new Date(user.challengeStartDate);
+    start.setHours(start.getHours() - 2);
+    start.setHours(0,0,0,0);
+    const todayStr = new Date(now);
+    todayStr.setHours(0,0,0,0);
+    const diffTime = Math.abs(todayStr.getTime() - start.getTime());
+    currentDay = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
+  }
+
+  if (!user?.isDemo && currentDay <= 75 && !isTest) {
+    return (
+      <main className="min-h-screen bg-neutral-950 text-neutral-50 p-6 flex flex-col items-center justify-center text-center pb-24 font-sans">
+        <div className="bg-red-500/10 border border-red-500/20 p-6 rounded-3xl mb-6">
+          <Activity className="w-12 h-12 text-red-500" />
+        </div>
+        <h1 className="text-3xl font-black mb-4 uppercase">Access Denied.</h1>
+        <p className="text-neutral-400 mb-8 max-w-sm">
+          You are on <strong>Day {currentDay}</strong>. The Gritify Wrapped synthesis is highly classified and will only unlock when you complete the full 75 days. Keep grinding.
+        </p>
+        <Link href="/" className="bg-neutral-900 border border-neutral-800 px-8 py-4 rounded-full font-black uppercase text-sm hover:bg-neutral-800 transition-colors">
+          Return to Command
+        </Link>
+      </main>
     );
   }
 
@@ -170,5 +206,13 @@ export default function WrappedDashboard() {
         )}
       </AnimatePresence>
     </main>
+  );
+}
+
+export default function WrappedDashboardWrapper() {
+  return (
+    <Suspense fallback={<div>Loading Wrapped...</div>}>
+      <WrappedDashboard />
+    </Suspense>
   );
 }

@@ -11,6 +11,11 @@ export default defineSchema({
     dailyReadingGoal: v.number(),
     isDemo: v.boolean(),
     externalWorkoutAppToken: v.optional(v.string()), // For the webhook integration
+    challengeStartDate: v.optional(v.number()), // Individual 75-Hard start date
+    lastFailedStartDate: v.optional(v.number()), // Store their streak in case they trigger a vouch request
+    bodyWeight: v.optional(v.number()), // For calorie estimators
+    weightUnit: v.optional(v.union(v.literal("lbs"), v.literal("kg"))), // Supports multi-regional logs
+    partnerId: v.optional(v.id("users")), // Hardcoded partner explicit link
   }).index("by_clerk_id", ["clerkId"]),
 
   challenges: defineTable({
@@ -38,6 +43,7 @@ export default defineSchema({
     diet: v.boolean(),
     photoStorageId: v.optional(v.id("_storage")), // Correct Convex native storage ID type
     qAndA: v.array(v.object({ question: v.string(), answer: v.string() })),
+    reactions: v.optional(v.array(v.string())), // Emojis
     status: v.union(
       v.literal("on_time"),
       v.literal("vouch_pending"),
@@ -60,6 +66,11 @@ export default defineSchema({
   })
     .index("by_voucher", ["voucherId"])
     .index("by_log", ["logId"]),
+
+  pushSubscriptions: defineTable({
+    userId: v.id("users"),
+    subscription: v.any(), // Serialized PushSubscription object
+  }).index("by_user", ["userId"]),
 
   wrappedInsights: defineTable({
     userId: v.id("users"),

@@ -11,6 +11,8 @@
 import type * as auth from "../auth.js";
 import type * as logs from "../logs.js";
 import type * as logs_internal from "../logs_internal.js";
+import type * as push from "../push.js";
+import type * as pushSubs from "../pushSubs.js";
 import type * as wrapped from "../wrapped.js";
 
 import type {
@@ -23,6 +25,8 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   logs: typeof logs;
   logs_internal: typeof logs_internal;
+  push: typeof push;
+  pushSubs: typeof pushSubs;
   wrapped: typeof wrapped;
 }>;
 

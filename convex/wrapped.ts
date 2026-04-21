@@ -2,7 +2,6 @@ import { action, internalMutation, internalQuery, query } from "./_generated/ser
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { GoogleGenerativeAI, SchemaType, Schema } from "@google/generative-ai";
-import { Doc } from "./_generated/dataModel";
 
 // 1. Gather the Data
 export const gatherWrappedData = internalQuery({
@@ -74,6 +73,7 @@ export const generateWrapped = action({
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
     
+    // Explicitly define this as a Schema object so TypeScript doesn't panic
     const responseSchema: Schema = {
       type: SchemaType.OBJECT,
       properties: {
@@ -128,17 +128,28 @@ export const generateWrapped = action({
 // 4. Fetch Existing Insights
 export const getMyWrapped = query({
   args: {},
-  handler: async (ctx): Promise<Doc<"wrappedInsights"> | null> => {
+  handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return null;
 
-    const userResult = await ctx.runQuery(internal.logs_internal.getUserDetails, { clerkSubject: identity.subject });
-    if (!userResult) return null;
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user) return null;
+
+    const challenge = await ctx.db
+      .query("challenges")
+      .filter((q) => q.eq(q.field("isActive"), true))
+      .first();
+
+    if (!challenge) return null;
 
     return await ctx.db
       .query("wrappedInsights")
       .withIndex("by_user_and_challenge", (q) => 
-        q.eq("userId", userResult.user._id).eq("challengeId", userResult.challengeId)
+        q.eq("userId", user._id).eq("challengeId", challenge._id)
       )
       .first();
   },
