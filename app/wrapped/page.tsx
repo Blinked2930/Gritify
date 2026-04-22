@@ -9,7 +9,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 
-export default function WrappedDashboard() {
+function WrappedDashboard() {
   const existingWrapped = useQuery(api.wrapped.getMyWrapped);
   const generateWrapped = useAction(api.wrapped.generateWrapped);
   const user = useQuery(api.logs.getMe);
