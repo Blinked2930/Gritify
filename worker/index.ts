@@ -16,6 +16,7 @@ self.addEventListener("push", (event: any) => {
       body,
       icon,
       badge: "/icon-192x192.png",
+      // @ts-ignore - TypeScript's worker types sometimes omit 'vibrate' even though it's valid
       vibrate: [200, 100, 200],
       data: { url },
     })
