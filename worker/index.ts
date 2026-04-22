@@ -1,5 +1,9 @@
-// Custom Service Worker for Push Notifications
+/// <reference lib="webworker" />
+export type {}; // Forces TypeScript to treat this file as an isolated module
 
+declare const self: ServiceWorkerGlobalScope;
+
+// Custom Service Worker for Push Notifications
 self.addEventListener("push", (event: any) => {
   const data = JSON.parse(event?.data.text() || "{}");
   const title = data.title || "Gritify Update";
