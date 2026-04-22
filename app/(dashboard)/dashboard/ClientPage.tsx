@@ -20,8 +20,51 @@ const EXERCISE_OPTIONS = [
   { label: "Other", value: "other", met: 5.0 },
 ];
 
+// ==========================================
+// 1. THE GATEKEEPER COMPONENT
+// ==========================================
 export default function DashboardClient() {
   const user = useQuery(api.logs.getMe);
+
+  // STATE 1: Checking Identity
+  if (user === undefined) {
+    return (
+      <div className="min-h-screen bg-neutral-950 flex items-center justify-center text-emerald-500 font-mono animate-pulse">
+        SYNCING IDENTITY...
+      </div>
+    );
+  }
+
+  // STATE 2: The Null Identity Failsafe (Webhook Failed)
+  if (user === null) {
+    return (
+      <div className="min-h-screen bg-neutral-950 flex flex-col items-center justify-center text-center p-6 font-sans">
+        <div className="bg-red-500/10 border border-red-500/20 p-6 rounded-3xl mb-6">
+          <Activity className="w-12 h-12 text-red-500" />
+        </div>
+        <h2 className="text-3xl font-black text-white uppercase tracking-tight mb-4">Identity Sync Failure</h2>
+        <p className="text-neutral-400 max-w-md mb-8">
+          You are logged in, but your Convex database profile is missing. 
+          This means your Clerk Webhook did not fire to tell your database to create your account.
+        </p>
+        <div className="bg-neutral-900 border border-neutral-800 p-4 rounded-xl text-left">
+          <p className="text-xs text-neutral-500 font-mono">
+            Action Required: Add app/api/webhook/route.ts from your old repo and link your Vercel URL in the Clerk Webhooks dashboard.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // STATE 3: User Exists! Render the actual dashboard.
+  return <DashboardMain user={user} />;
+}
+
+// ==========================================
+// 2. THE MAIN DASHBOARD COMPONENT
+// ==========================================
+function DashboardMain({ user }: { user: any }) {
+  // Now we safely fetch the log because we KNOW the user exists in the DB
   const log = useQuery(api.logs.getTodayLog);
   const updateLog = useMutation(api.logs.updateLog);
   const evaluateContinuity = useMutation(api.logs.evaluateContinuity);
@@ -63,37 +106,6 @@ export default function DashboardClient() {
     }
   }, [user, log]);
 
-  // STATE 1: Check User First
-  if (user === undefined) {
-    return (
-      <div className="min-h-screen bg-neutral-950 flex items-center justify-center text-emerald-500 font-mono animate-pulse">
-        SYNCING IDENTITY...
-      </div>
-    );
-  }
-
-  // STATE 2: The Null Identity Failsafe (Webhook Failed)
-  if (user === null) {
-    return (
-      <div className="min-h-screen bg-neutral-950 flex flex-col items-center justify-center text-center p-6 font-sans">
-        <div className="bg-red-500/10 border border-red-500/20 p-6 rounded-3xl mb-6">
-          <Activity className="w-12 h-12 text-red-500" />
-        </div>
-        <h2 className="text-3xl font-black text-white uppercase tracking-tight mb-4">Identity Sync Failure</h2>
-        <p className="text-neutral-400 max-w-md mb-8">
-          You are logged in, but your Convex database profile is missing. 
-          This means your Clerk Webhook did not fire to tell your database to create your account.
-        </p>
-        <div className="bg-neutral-900 border border-neutral-800 p-4 rounded-xl text-left">
-          <p className="text-xs text-neutral-500 font-mono">
-            Action Required: Add app/api/webhook/route.ts from your old repo and link your Vercel URL in the Clerk Webhooks dashboard.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  // STATE 3: User exists! Now wait for the daily log
   if (log === undefined) {
     return (
       <div className="min-h-screen bg-neutral-950 flex items-center justify-center text-emerald-500 font-mono animate-pulse">
@@ -627,7 +639,6 @@ export default function DashboardClient() {
           </>
         )}
       </AnimatePresence>
-
     </div>
   );
 }
