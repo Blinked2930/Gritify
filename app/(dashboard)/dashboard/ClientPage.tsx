@@ -63,7 +63,38 @@ export default function DashboardClient() {
     }
   }, [user, log]);
 
-  if (user === undefined || log === undefined) {
+  // STATE 1: Check User First
+  if (user === undefined) {
+    return (
+      <div className="min-h-screen bg-neutral-950 flex items-center justify-center text-emerald-500 font-mono animate-pulse">
+        SYNCING IDENTITY...
+      </div>
+    );
+  }
+
+  // STATE 2: The Null Identity Failsafe (Webhook Failed)
+  if (user === null) {
+    return (
+      <div className="min-h-screen bg-neutral-950 flex flex-col items-center justify-center text-center p-6 font-sans">
+        <div className="bg-red-500/10 border border-red-500/20 p-6 rounded-3xl mb-6">
+          <Activity className="w-12 h-12 text-red-500" />
+        </div>
+        <h2 className="text-3xl font-black text-white uppercase tracking-tight mb-4">Identity Sync Failure</h2>
+        <p className="text-neutral-400 max-w-md mb-8">
+          You are logged in, but your Convex database profile is missing. 
+          This means your Clerk Webhook did not fire to tell your database to create your account.
+        </p>
+        <div className="bg-neutral-900 border border-neutral-800 p-4 rounded-xl text-left">
+          <p className="text-xs text-neutral-500 font-mono">
+            Action Required: Add app/api/webhook/route.ts from your old repo and link your Vercel URL in the Clerk Webhooks dashboard.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // STATE 3: User exists! Now wait for the daily log
+  if (log === undefined) {
     return (
       <div className="min-h-screen bg-neutral-950 flex items-center justify-center text-emerald-500 font-mono animate-pulse">
         SYNCING GRID...
@@ -75,7 +106,7 @@ export default function DashboardClient() {
   let currentDay = 1;
   const now = new Date();
   now.setHours(now.getHours() - 2);
-  if (user?.challengeStartDate) {
+  if (user.challengeStartDate) {
     const start = new Date(user.challengeStartDate);
     start.setHours(start.getHours() - 2);
     // Ignore time within the day, focus on calendar dates only
@@ -124,13 +155,12 @@ export default function DashboardClient() {
       const selected = EXERCISE_OPTIONS.find(o => o.value === workoutType);
       const met = selected?.met || 5.0;
       
-      const weightMultiplier = (user?.weightUnit === "kg" || weightUnitInput === "kg") ? 1 : 0.453592;
-      const weightKg = (user?.bodyWeight || 150) * weightMultiplier;
+      const weightMultiplier = (user.weightUnit === "kg" || weightUnitInput === "kg") ? 1 : 0.453592;
+      const weightKg = (user.bodyWeight || 150) * weightMultiplier;
       
       const durationHours = (parseFloat(workoutDuration) || 45) / 60;
       const calsBurned = Math.round(met * weightKg * durationHours);
       
-      const currentLog = log?.[type];
       // Typecasting the dynamic update structure for Convex
       if (type === "workout1") {
         updateLog({ workout1: { done: true, notes: selected?.label || "Other", cals: calsBurned } });
@@ -205,7 +235,7 @@ export default function DashboardClient() {
         </div>
 
         {/* Backfill Alert */}
-        {currentDay === 1 && user?.lastFailedStartDate && (
+        {currentDay === 1 && user.lastFailedStartDate && (
           <div className="bg-amber-500/10 border border-amber-500/30 p-5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <h3 className="text-amber-500 font-black uppercase tracking-widest text-sm flex items-center gap-2">
@@ -298,13 +328,13 @@ export default function DashboardClient() {
             <div className={`absolute bottom-0 left-0 right-0 ${isWaterMet ? 'bg-emerald-500/20' : 'bg-emerald-500/10'} transition-all duration-1000 ease-out -z-10`} style={{height: `${Math.min((currentWaterAmountStr / waterTarget) * 100, 100)}%`}} />
             <div className="relative z-10">
               <h3 className="text-lg font-bold text-neutral-200 uppercase tracking-wide flex items-center gap-2"><Droplet size={18} className="text-emerald-500" /> Hydration</h3>
-              <p className="text-xs text-neutral-500 mt-1 mb-4 font-mono">1 GALLON ({waterTarget} {user?.vesselUnit})</p>
+              <p className="text-xs text-neutral-500 mt-1 mb-4 font-mono">1 GALLON ({waterTarget} {user.vesselUnit})</p>
             </div>
             
             <div className="relative z-10 flex items-center justify-between gap-4 mt-auto">
               <div className="flex-1">
                 <p className="text-3xl font-black text-white tracking-tighter">
-                  {currentWaterAmountStr.toFixed(user?.vesselUnit === "liters" ? 2 : 0)}<span className="text-sm font-bold text-neutral-500 ml-1">/ {waterTarget}</span>
+                  {currentWaterAmountStr.toFixed(user.vesselUnit === "liters" ? 2 : 0)}<span className="text-sm font-bold text-neutral-500 ml-1">/ {waterTarget}</span>
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -326,15 +356,15 @@ export default function DashboardClient() {
 
           {/* Reading */}
           <div className={`relative overflow-hidden border p-5 rounded-2xl shadow-sm flex flex-col justify-between transition-all z-0 ${isPagesMet ? 'border-emerald-500/40' : 'bg-neutral-900 border-neutral-800'}`}>
-            <div className={`absolute bottom-0 left-0 right-0 ${isPagesMet ? 'bg-emerald-500/20' : 'bg-emerald-500/10'} transition-all duration-1000 ease-out -z-10`} style={{height: `${Math.min(((log?.readingTotal || 0) / (user?.dailyReadingGoal || 10)) * 100, 100)}%`}} />
+            <div className={`absolute bottom-0 left-0 right-0 ${isPagesMet ? 'bg-emerald-500/20' : 'bg-emerald-500/10'} transition-all duration-1000 ease-out -z-10`} style={{height: `${Math.min(((log?.readingTotal || 0) / (user.dailyReadingGoal || 10)) * 100, 100)}%`}} />
             <div className="relative z-10">
               <h3 className="text-lg font-bold text-neutral-200 uppercase tracking-wide flex items-center gap-2"><BookOpen size={18} className="text-emerald-500" /> Reading</h3>
-              <p className="text-xs text-neutral-500 mt-1 mb-4 font-mono">{user?.dailyReadingGoal} PAGES NON-FICTION</p>
+              <p className="text-xs text-neutral-500 mt-1 mb-4 font-mono">{user.dailyReadingGoal} PAGES NON-FICTION</p>
             </div>
             <div className="relative z-10 flex items-center gap-4 mt-auto">
               <div className="flex-1">
                 <p className="text-3xl font-black text-white tracking-tighter">
-                  {log?.readingTotal || 0}<span className="text-sm font-bold text-neutral-500 ml-1">/ {user?.dailyReadingGoal}</span>
+                  {log?.readingTotal || 0}<span className="text-sm font-bold text-neutral-500 ml-1">/ {user.dailyReadingGoal}</span>
                 </p>
               </div>
             </div>
