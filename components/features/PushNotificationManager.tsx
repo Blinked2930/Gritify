@@ -47,7 +47,10 @@ export function PushNotificationManager() {
     if (!vapidKey) return false;
 
     try {
-      const registration = await navigator.serviceWorker.ready;
+      // THE FIX: Explicitly register the background worker to prevent the 404
+      const registration = await navigator.serviceWorker.register('/sw.js');
+      await navigator.serviceWorker.ready; // Wait for it to be fully active
+
       let subscription = await registration.pushManager.getSubscription();
 
       if (!subscription && forceRequest) {
@@ -74,19 +77,15 @@ export function PushNotificationManager() {
   const handleGrant = async () => {
     localStorage.setItem("gritify_skip_push", "true");
     const success = await syncSubscription(true);
-    // Explicitly hide the dialog once they interacted (whether system blocks, grants, or denies)
-    // Sometimes the browser native pop up handles it incorrectly, so we wipe out 'default'
     if (Notification.permission !== "default") {
       setPermissionState(Notification.permission);
     } else {
-      // Hard fallback if native overlay doesn't fire but they clicked it
       setPermissionState("denied"); 
     }
   };
 
   if (!isSupported) return null;
 
-  // We only show the interceptor modal if we haven't asked them yet (default)
   return (
     <AnimatePresence>
       {permissionState === "default" && (
