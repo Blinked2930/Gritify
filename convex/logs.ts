@@ -24,10 +24,28 @@ async function getUser(ctx: any) {
   const identity = await ctx.auth.getUserIdentity();
   if (!identity) return null;
 
-  return await ctx.db
+  const user = await ctx.db
     .query("users")
     .withIndex("by_clerk_id", (q: any) => q.eq("clerkId", identity.subject))
     .first();
+
+  if (!user) {
+    // THE GHOST PROFILE (Just-In-Time Sync)
+    // Feeds the frontend an in-memory profile so the dashboard doesn't crash.
+    // The real database row will be created silently in the background a millisecond later.
+    return {
+      _id: "pending_jit_user" as any,
+      clerkId: identity.subject,
+      name: identity.name || "Grinder",
+      vesselSize: 128,
+      vesselUnit: "oz",
+      dailyReadingGoal: 10,
+      isDemo: false,
+      challengeStartDate: Date.now(),
+    };
+  }
+
+  return user;
 }
 
 async function getOrCreateUser(ctx: any) {
@@ -61,7 +79,8 @@ export const getTodayLog = query({
   args: {},
   handler: async (ctx) => {
     const user = await getUser(ctx);
-    if (!user) return null;
+    if (!user || (user._id as string) === "pending_jit_user") return null;
+
     const today = getAdjustedToday();
     const log = await ctx.db
       .query("dailyLogs")
@@ -90,7 +109,7 @@ export const getPartnerData = query({
   args: {},
   handler: async (ctx) => {
     const user = await getUser(ctx);
-    if (!user) return null;
+    if (!user || (user._id as string) === "pending_jit_user") return { partner: null, log: null };
 
     const allUsers = await ctx.db.query("users").collect();
     const partner = findActualPartner(allUsers, user);
@@ -120,7 +139,7 @@ export const getAvailablePartners = query({
   args: {},
   handler: async (ctx) => {
     const user = await getUser(ctx);
-    if (!user) return [];
+    if (!user || (user._id as string) === "pending_jit_user") return [];
     
     // Only fetch other users
     const allUsers = await ctx.db.query("users").collect();
@@ -196,10 +215,6 @@ export const evaluateContinuity = mutation({
       .withIndex("by_user_date", (q) => q.eq("userId", user._id).eq("date", yesterdayStr))
       .first();
 
-    // Check strict 75 Hard success criteria (Water, Pages, 2 Workouts, Diet, Photo)
-    // Note: Water is calculated via vesselSize. For 1 Gallon, it must be >= 128 oz (or equivalent if unit is different, assuming oz for now).
-    // The PRD says "1 Gallon (128 oz)". We assume vesselSize is oz or ml, but let's stick to total ounces for safety if they pick 'oz'. 
-    // To simplify: let's enforce waterTotal * user.vesselSize >= 128
     const waterMet = yesterdayLog ? (yesterdayLog.waterTotal * user.vesselSize) >= 128 : false;
 
     const isFail = !yesterdayLog || 
@@ -211,7 +226,6 @@ export const evaluateContinuity = mutation({
       !yesterdayLog.photoStorageId;
 
     if (isFail && yesterdayLog?.status !== "vouched") {
-      // Don't repeatedly overwrite the failed streak if they just keep failing on Day 1
       const isAlreadyDayOne = startDayStr === todayStr;
       if (!isAlreadyDayOne) {
         await ctx.db.patch(user._id, { 
@@ -421,7 +435,7 @@ export const getGlobalAggregates = query({
   args: {},
   handler: async (ctx) => {
     const user = await getUser(ctx);
-    if (!user) return null;
+    if (!user || (user._id as string) === "pending_jit_user") return null;
 
     const allUsers = await ctx.db.query("users").collect();
     const partner = findActualPartner(allUsers, user);
