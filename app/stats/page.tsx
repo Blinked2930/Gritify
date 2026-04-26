@@ -25,8 +25,19 @@ export default function SquadDirectoryDashboard() {
     );
   }
 
-  // Handle the transition state before the backend query is fully rebuilt
-  const rawSquadArray = data?.squad || []; 
+  // Handle the transition state before the backend query is fully rebuilt / null state for new users
+  if (data === null) {
+    return (
+      <div className="min-h-screen bg-neutral-950 flex flex-col items-center justify-center p-6 text-center">
+        <Activity className="w-12 h-12 text-neutral-800 mb-4" />
+        <h2 className="text-xl font-bold text-white mb-2 uppercase tracking-wide">Syncing Telemetry</h2>
+        <p className="text-neutral-500 text-sm">Awaiting authentication lock-in to decrypt global stats.</p>
+      </div>
+    );
+  }
+
+  // Now TypeScript knows 100% that `data` is not null, so it will allow data.userStats
+  const rawSquadArray = data.squad || []; 
   // Add yourself to the squad list dynamically for the directory view if not already included
   const fullSquadList = [
     {
