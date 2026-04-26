@@ -100,7 +100,6 @@ export const updateUserSettings = mutation({
     dailyReadingGoal: v.optional(v.number()),
     bodyWeight: v.optional(v.number()),
     weightUnit: v.optional(v.union(v.literal("lbs"), v.literal("kg"))),
-    // NEW: Allow the privacy settings to pass through the API
     privacySettings: v.optional(v.object({
       shareWorkouts: v.boolean(),
       shareWater: v.boolean(),
@@ -122,56 +121,6 @@ export const updateUserSettings = mutation({
   },
 });
 
-export const evaluateContinuity = mutation({
-  args: {},
-  handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return; 
-    
-    const user = await getOrCreateUser(ctx);
-    if (!user.challengeStartDate) return;
-
-    const now = new Date();
-    now.setHours(now.getHours() - 2);
-    const todayStr = now.toISOString().split("T")[0];
-    const today = new Date(todayStr);
-
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toISOString().split("T")[0];
-
-    const start = new Date(user.challengeStartDate);
-    start.setHours(start.getHours() - 2);
-    const startDayStr = start.toISOString().split("T")[0];
-    if (startDayStr === todayStr) return; 
-
-    const yesterdayLog = await ctx.db
-      .query("dailyLogs")
-      .withIndex("by_user_date", (q) => q.eq("userId", user._id).eq("date", yesterdayStr))
-      .first();
-
-    const waterMet = yesterdayLog ? (yesterdayLog.waterTotal * user.vesselSize) >= 128 : false;
-
-    const isFail = !yesterdayLog || 
-      !waterMet || 
-      yesterdayLog.readingTotal < user.dailyReadingGoal || 
-      !yesterdayLog.workout1.done || 
-      !yesterdayLog.workout2.done || 
-      !yesterdayLog.diet || 
-      !yesterdayLog.photoStorageId;
-
-    if (isFail && yesterdayLog?.status !== "vouched") {
-      const isAlreadyDayOne = startDayStr === todayStr;
-      if (!isAlreadyDayOne) {
-        await ctx.db.patch(user._id, { 
-          lastFailedStartDate: user.challengeStartDate,
-          challengeStartDate: Date.now() 
-        });
-      }
-    }
-  },
-});
-
 export const updateLog = mutation({
   args: {
     waterTotal: v.optional(v.number()),
@@ -183,7 +132,6 @@ export const updateLog = mutation({
     diet: v.optional(v.boolean()),
     photoStorageId: v.optional(v.id("_storage")),
     qAndA: v.optional(v.array(v.object({ question: v.string(), answer: v.string() }))),
-    vouchRequested: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const user = await getOrCreateUser(ctx);
@@ -212,7 +160,7 @@ export const updateLog = mutation({
         diet: args.diet ?? true,
         photoStorageId: args.photoStorageId,
         qAndA: args.qAndA ?? [],
-        status: args.vouchRequested ? "vouch_pending" : "on_time",
+        status: "on_time",
       });
 
       return newLogId;
@@ -228,58 +176,12 @@ export const updateLog = mutation({
          args.workout2Done !== undefined ? { workout2: { ...existingLog.workout2, done: args.workout2Done ?? false } } : {}),
       ...(args.photoStorageId !== undefined && { photoStorageId: args.photoStorageId }),
       ...(args.qAndA !== undefined && { qAndA: args.qAndA }),
-      ...(args.vouchRequested !== undefined && { status: args.vouchRequested ? "vouch_pending" : existingLog.status }),
     });
     
     return existingLog._id;
   },
 });
 
-export const requestBackfill = mutation({
-  args: {},
-  handler: async (ctx) => {
-    const user = await getOrCreateUser(ctx);
-    if (!user.lastFailedStartDate) return;
-
-    const now = new Date();
-    now.setHours(now.getHours() - 2);
-    const today = new Date(now.toISOString().split("T")[0]);
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toISOString().split("T")[0];
-
-    const existingLog = await ctx.db
-      .query("dailyLogs")
-      .withIndex("by_user_date", (q) => q.eq("userId", user._id).eq("date", yesterdayStr))
-      .first();
-
-    if (!existingLog) {
-      const dummyChallengeId = await ctx.db.insert("challenges", {
-        participants: [user._id],
-        startDate: Date.now(),
-        isActive: true,
-      });
-
-      await ctx.db.insert("dailyLogs", {
-        userId: user._id,
-        challengeId: dummyChallengeId,
-        date: yesterdayStr,
-        workout1: { done: false, notes: "", cals: 0 },
-        workout2: { done: false, notes: "", cals: 0 },
-        waterTotal: 0,
-        readingTotal: 0,
-        diet: false,
-        photoStorageId: undefined,
-        qAndA: [],
-        status: "vouch_pending",
-      });
-    } else {
-      await ctx.db.patch(existingLog._id, { status: "vouch_pending" });
-    }
-  }
-});
-
-// NEW SQUAD AGGREGATES QUERY
 export const getGlobalAggregates = query({
   args: {},
   handler: async (ctx) => {
@@ -311,17 +213,14 @@ export const getGlobalAggregates = query({
     // 2. Fetch the entire Squad
     let squadArray: any[] = [];
     
-    // If user has a squad ID, grab everyone in it. If not, just return their own stats.
     if (user.squadId) {
       const squadMembers = await ctx.db
         .query("users")
-        .withIndex("by_squad", (q) => q.eq("squadId", user.squadId as string)) // Type casting to satisfy TypeScript
+        .withIndex("by_squad", (q) => q.eq("squadId", user.squadId as string)) 
         .collect();
 
-      // Filter out the active user so they don't appear twice in the directory
       const otherMembers = squadMembers.filter(m => m._id !== user._id);
 
-      // Map over other members and fetch their logs
       squadArray = await Promise.all(otherMembers.map(async (member) => {
         const memberLogs = await ctx.db
           .query("dailyLogs")

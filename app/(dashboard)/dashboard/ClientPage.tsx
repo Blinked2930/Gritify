@@ -51,10 +51,8 @@ export default function DashboardClient() {
 function DashboardMain({ user }: { user: any }) {
   const log = useQuery(api.logs.getTodayLog);
   const updateLog = useMutation(api.logs.updateLog);
-  const evaluateContinuity = useMutation(api.logs.evaluateContinuity);
   const updateSettings = useMutation(api.logs.updateUserSettings);
   const generateUploadUrl = useMutation(api.logs.generateUploadUrl);
-  const requestBackfill = useMutation(api.logs.requestBackfill);
   
   const [reflectionOpen, setReflectionOpen] = useState(false);
   const [reflectionA, setReflectionA] = useState("");
@@ -65,7 +63,6 @@ function DashboardMain({ user }: { user: any }) {
   const [bodyWeightInput, setBodyWeightInput] = useState("150");
   const [weightUnitInput, setWeightUnitInput] = useState<"lbs" | "kg">("lbs");
   
-  // Privacy Toggles State
   const [privacySettings, setPrivacySettings] = useState({
     shareWorkouts: true,
     shareWater: true,
@@ -80,12 +77,6 @@ function DashboardMain({ user }: { user: any }) {
   const [workoutPanelOpen, setWorkoutPanelOpen] = useState<"workout1" | "workout2" | null>(null);
   const [workoutType, setWorkoutType] = useState("running");
   const [workoutDuration, setWorkoutDuration] = useState("45");
-
-  useEffect(() => {
-    if (user) {
-      evaluateContinuity().catch(err => console.log("Continuity check wait:", err));
-    }
-  }, [evaluateContinuity, user]);
   
   useEffect(() => {
     if (user?.vesselSize) setVesselSizeInput(user.vesselSize.toString());
@@ -220,35 +211,8 @@ function DashboardMain({ user }: { user: any }) {
             <Link href="/stats" className="bg-neutral-900 border border-neutral-800 hover:border-emerald-500/50 hover:bg-emerald-500/10 text-emerald-400 px-6 py-2 rounded-full text-sm font-bold flex items-center gap-2 transition-all shadow-lg">
               <Users size={16} /> <span className="hidden sm:inline">SQUAD</span>
             </Link>
-            {/* REFLECT BUTTON HIDDEN FOR MVP
-            <button 
-              onClick={() => setReflectionOpen(true)}
-              className="bg-neutral-900 border border-neutral-800 hover:border-emerald-500/50 hover:bg-emerald-500/10 text-emerald-400 px-4 py-2 rounded-full text-sm font-bold flex items-center gap-2 transition-all shadow-lg"
-            >
-              <NotebookPen size={16} /> <span className="hidden sm:inline">REFLECT</span>
-            </button> 
-            */}
           </div>
         </div>
-
-        {currentDay === 1 && user.lastFailedStartDate && (
-          <div className="bg-amber-500/10 border border-amber-500/30 p-5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
-              <h3 className="text-amber-500 font-black uppercase tracking-widest text-sm flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" /> Grid Reset Detected
-              </h3>
-              <p className="text-amber-500/80 text-xs mt-1 max-w-sm">
-                You missed tracking yesterday. Request a vouch to restore your streak.
-              </p>
-            </div>
-            <button 
-              onClick={() => requestBackfill()}
-              className="bg-amber-500 hover:bg-amber-400 text-neutral-950 px-6 py-3 rounded-xl font-black uppercase text-xs tracking-widest shadow-[0_0_15px_rgba(245,158,11,0.2)] transition-colors"
-            >
-              Request Vouch
-            </button>
-          </div>
-        )}
 
         {/* Matrix Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -414,18 +378,17 @@ function DashboardMain({ user }: { user: any }) {
                   <p className="text-[10px] text-neutral-500 font-mono leading-relaxed mb-4">Choose which telemetry data your squad is allowed to see on the shared dashboard.</p>
                   
                   {[
-                    { key: "shareWorkouts", label: "Broadcast Workouts" },
-                    { key: "shareWater", label: "Broadcast Hydration" },
-                    { key: "shareReading", label: "Broadcast Reading" },
-                    { key: "shareDiet", label: "Broadcast Diet Status" },
-                    { key: "sharePhotos", label: "Broadcast Progress Photos (Risky)" },
+                    { key: "shareWorkouts", label: "Share Workouts" },
+                    { key: "shareWater", label: "Share Hydration" },
+                    { key: "shareReading", label: "Share Reading" },
+                    { key: "shareDiet", label: "Share Diet Status" },
+                    { key: "sharePhotos", label: "Share Progress Photos" },
                   ].map((setting) => (
                     <label key={setting.key} className="flex items-center justify-between cursor-pointer group">
                       <span className="text-sm font-bold text-neutral-300 uppercase tracking-wide group-hover:text-white transition-colors">{setting.label}</span>
                       <div className={`w-12 h-6 rounded-full p-1 transition-colors ${privacySettings[setting.key as keyof typeof privacySettings] ? 'bg-emerald-500' : 'bg-neutral-800'}`}>
                         <div className={`w-4 h-4 bg-white rounded-full transition-transform ${privacySettings[setting.key as keyof typeof privacySettings] ? 'translate-x-6' : 'translate-x-0'}`} />
                       </div>
-                      {/* Hidden input to handle the state change */}
                       <input 
                         type="checkbox" 
                         className="hidden" 
