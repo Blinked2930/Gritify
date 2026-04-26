@@ -52,6 +52,7 @@ function DashboardMain({ user }: { user: any }) {
   const log = useQuery(api.logs.getTodayLog);
   const updateLog = useMutation(api.logs.updateLog);
   const updateSettings = useMutation(api.logs.updateUserSettings);
+  const joinSquad = useMutation(api.logs.joinSquad);
   const generateUploadUrl = useMutation(api.logs.generateUploadUrl);
   
   const [reflectionOpen, setReflectionOpen] = useState(false);
@@ -60,8 +61,9 @@ function DashboardMain({ user }: { user: any }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [vesselSizeInput, setVesselSizeInput] = useState("128");
   const [vesselUnitInput, setVesselUnitInput] = useState<"oz" | "ml" | "liters">("oz");
-  const [bodyWeightInput, setBodyWeightInput] = useState("150");
+  const [bodyWeightInput, setBodyWeightInput] = useState("160");
   const [weightUnitInput, setWeightUnitInput] = useState<"lbs" | "kg">("lbs");
+  const [squadIdInput, setSquadIdInput] = useState("");
   
   const [privacySettings, setPrivacySettings] = useState({
     shareWorkouts: true,
@@ -84,6 +86,7 @@ function DashboardMain({ user }: { user: any }) {
     if (user?.bodyWeight) setBodyWeightInput(user.bodyWeight.toString());
     if (user?.weightUnit) setWeightUnitInput(user.weightUnit as any);
     if (user?.privacySettings) setPrivacySettings(user.privacySettings);
+    if (user?.squadId) setSquadIdInput(user.squadId);
     
     if (log?.qAndA && log.qAndA.length > 0) {
       setReflectionA(log.qAndA[0].answer);
@@ -343,12 +346,27 @@ function DashboardMain({ user }: { user: any }) {
         {settingsOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setSettingsOpen(false)} />
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-neutral-900 border border-neutral-800 p-6 rounded-2xl shadow-2xl relative z-10 w-full max-w-sm max-h-[90vh] overflow-y-auto">
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-neutral-900 border border-neutral-800 p-6 rounded-2xl shadow-2xl relative z-10 w-full max-w-sm max-h-[90vh] overflow-y-auto hide-scrollbar">
               <h2 className="text-xl font-black text-white mb-6 uppercase">Command Settings</h2>
               <div className="space-y-6">
                 
-                {/* Metrics */}
+                {/* Squad Network Section */}
                 <div className="space-y-4">
+                  <h3 className="text-xs font-bold text-emerald-500 uppercase tracking-widest border-b border-neutral-800 pb-2 flex items-center gap-2"><Users size={14} /> Squad Network</h3>
+                  <p className="text-[10px] text-neutral-500 font-mono leading-relaxed mb-4">Enter a shared Squad ID to link your dashboard with your friends.</p>
+                  <div>
+                    <input 
+                      type="text" 
+                      placeholder="e.g. alpha-squad"
+                      value={squadIdInput} 
+                      onChange={e => setSquadIdInput(e.target.value)} 
+                      className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500 font-mono" 
+                    />
+                  </div>
+                </div>
+
+                {/* Metrics */}
+                <div className="space-y-4 pt-4 border-t border-neutral-800">
                   <h3 className="text-xs font-bold text-emerald-500 uppercase tracking-widest border-b border-neutral-800 pb-2">Body Metrics</h3>
                   <div className="flex gap-2">
                     <div className="flex-1">
@@ -362,7 +380,9 @@ function DashboardMain({ user }: { user: any }) {
                   </div>
                   <div className="flex gap-2">
                     <div className="flex-1">
-                      <label className="block text-xs font-bold text-neutral-500 uppercase tracking-wider mb-2">Weight</label>
+                      <label className="block text-xs font-bold text-neutral-500 uppercase tracking-wider mb-2">
+                        Weight <span className="text-[10px] lowercase text-neutral-600">(optional)*</span>
+                      </label>
                       <input type="number" value={bodyWeightInput} onChange={e => setBodyWeightInput(e.target.value)} className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500 font-mono" />
                     </div>
                     <div className="w-1/3">
@@ -370,6 +390,9 @@ function DashboardMain({ user }: { user: any }) {
                       <CustomDropdown options={[{label: "lbs", value: "lbs"}, {label: "kg", value: "kg"}]} value={weightUnitInput} onChange={(val) => setWeightUnitInput(val as any)} />
                     </div>
                   </div>
+                  <p className="text-[10px] text-neutral-500 mt-1 font-mono leading-tight">
+                    *If provided, weight is only used to personalize your active calorie burn estimations.
+                  </p>
                 </div>
 
                 {/* Privacy & Social */}
@@ -403,6 +426,7 @@ function DashboardMain({ user }: { user: any }) {
                   onClick={() => {
                     const parsed = parseFloat(vesselSizeInput);
                     const bwParsed = parseFloat(bodyWeightInput);
+                    
                     if (!isNaN(parsed) && parsed > 0) {
                       updateSettings({ 
                         vesselSize: parsed, 
@@ -411,11 +435,17 @@ function DashboardMain({ user }: { user: any }) {
                         ...(isNaN(bwParsed) ? {} : { bodyWeight: bwParsed, weightUnit: weightUnitInput })
                       });
                     }
+                    
+                    // Automatically trigger the join mutation if they entered a code
+                    if (squadIdInput !== (user?.squadId || "")) {
+                      joinSquad({ squadId: squadIdInput });
+                    }
+
                     setSettingsOpen(false);
                   }}
                   className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-black tracking-widest rounded-xl transition-all mt-6 uppercase text-sm shadow-[0_0_20px_rgba(16,185,129,0.2)]"
                 >
-                  Confirm Lockdown
+                  Confirm
                 </button>
               </div>
             </motion.div>

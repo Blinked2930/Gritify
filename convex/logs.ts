@@ -121,6 +121,18 @@ export const updateUserSettings = mutation({
   },
 });
 
+// NEW: Mutation to easily join or leave a squad
+export const joinSquad = mutation({
+  args: { squadId: v.string() },
+  handler: async (ctx, args) => {
+    const user = await getOrCreateUser(ctx);
+    const cleanId = args.squadId.trim().toLowerCase();
+    return await ctx.db.patch(user._id, {
+      squadId: cleanId === "" ? undefined : cleanId
+    });
+  }
+});
+
 export const updateLog = mutation({
   args: {
     waterTotal: v.optional(v.number()),
@@ -204,13 +216,11 @@ export const getGlobalAggregates = query({
       return { totalWater, totalPages, totalCals, workoutCount };
     };
 
-    // 1. Get User's Logs
     const userLogs = await ctx.db
       .query("dailyLogs")
       .withIndex("by_user_date", (q) => q.eq("userId", user._id))
       .collect();
 
-    // 2. Fetch the entire Squad
     let squadArray: any[] = [];
     
     if (user.squadId) {
