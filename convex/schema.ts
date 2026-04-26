@@ -10,24 +10,37 @@ export default defineSchema({
     vesselUnit: v.union(v.literal("oz"), v.literal("ml"), v.literal("liters")),
     dailyReadingGoal: v.number(),
     isDemo: v.boolean(),
-    externalWorkoutAppToken: v.optional(v.string()), // For the webhook integration
-    challengeStartDate: v.optional(v.number()), // Individual 75-Hard start date
-    lastFailedStartDate: v.optional(v.number()), // Store their streak in case they trigger a vouch request
-    bodyWeight: v.optional(v.number()), // For calorie estimators
-    weightUnit: v.optional(v.union(v.literal("lbs"), v.literal("kg"))), // Supports multi-regional logs
-    partnerId: v.optional(v.id("users")), // Hardcoded partner explicit link
-  }).index("by_clerk_id", ["clerkId"]),
+    externalWorkoutAppToken: v.optional(v.string()), 
+    challengeStartDate: v.optional(v.number()), 
+    lastFailedStartDate: v.optional(v.number()), 
+    bodyWeight: v.optional(v.number()), 
+    weightUnit: v.optional(v.union(v.literal("lbs"), v.literal("kg"))),
+    
+    // NEW: Squad & Privacy Architecture
+    squadId: v.optional(v.string()), 
+    privacySettings: v.optional(
+      v.object({
+        shareWorkouts: v.boolean(),
+        shareWater: v.boolean(),
+        shareReading: v.boolean(),
+        shareDiet: v.boolean(),
+        sharePhotos: v.boolean()
+      })
+    ),
+  })
+    .index("by_clerk_id", ["clerkId"])
+    .index("by_squad", ["squadId"]), // Fast lookup for squad members
 
   challenges: defineTable({
     participants: v.array(v.id("users")),
-    startDate: v.number(), // Timestamp
+    startDate: v.number(), 
     isActive: v.boolean(),
   }),
 
   dailyLogs: defineTable({
     userId: v.id("users"),
     challengeId: v.id("challenges"),
-    date: v.string(), // "YYYY-MM-DD" format, calculated with the 2 AM offset
+    date: v.string(), 
     workout1: v.object({
       done: v.boolean(),
       notes: v.string(),
@@ -41,9 +54,9 @@ export default defineSchema({
     waterTotal: v.number(),
     readingTotal: v.number(),
     diet: v.boolean(),
-    photoStorageId: v.optional(v.id("_storage")), // Correct Convex native storage ID type
+    photoStorageId: v.optional(v.id("_storage")), 
     qAndA: v.array(v.object({ question: v.string(), answer: v.string() })),
-    reactions: v.optional(v.array(v.string())), // Emojis
+    reactions: v.optional(v.array(v.string())), 
     status: v.union(
       v.literal("on_time"),
       v.literal("vouch_pending"),
@@ -69,7 +82,7 @@ export default defineSchema({
 
   pushSubscriptions: defineTable({
     userId: v.id("users"),
-    subscription: v.any(), // Serialized PushSubscription object
+    subscription: v.any(), 
   }).index("by_user", ["userId"]),
 
   wrappedInsights: defineTable({
@@ -77,7 +90,7 @@ export default defineSchema({
     challengeId: v.id("challenges"),
     totalWater: v.number(),
     totalPages: v.number(),
-    aiSummary: v.string(), // The goofy synthesis
+    aiSummary: v.string(), 
     visualTheme: v.string(),
   }).index("by_user_and_challenge", ["userId", "challengeId"]),
 });
