@@ -8,18 +8,6 @@ function getAdjustedToday() {
   return now.toISOString().split("T")[0];
 }
 
-function findActualPartner(allUsers: any[], user: any) {
-  // If explicitly wired, absolute highest priority
-  if (user.partnerId) {
-    const matched = allUsers.find(u => u._id === user.partnerId);
-    if (matched) return matched;
-  }
-  // Fallback to chronology
-  const eligible = allUsers.filter((u) => u._id !== user._id);
-  eligible.sort((a, b) => b._creationTime - a._creationTime);
-  return eligible[0] || null;
-}
-
 async function getUser(ctx: any) {
   const identity = await ctx.auth.getUserIdentity();
   if (!identity) return null;
@@ -30,9 +18,6 @@ async function getUser(ctx: any) {
     .first();
 
   if (!user) {
-    // THE GHOST PROFILE (Just-In-Time Sync)
-    // Feeds the frontend an in-memory profile so the dashboard doesn't crash.
-    // The real database row will be created silently in the background a millisecond later.
     return {
       _id: "pending_jit_user" as any,
       clerkId: identity.subject,
@@ -44,7 +29,6 @@ async function getUser(ctx: any) {
       challengeStartDate: Date.now(),
     };
   }
-
   return user;
 }
 
@@ -65,7 +49,7 @@ async function getOrCreateUser(ctx: any) {
       vesselUnit: "oz",
       dailyReadingGoal: 10,
       isDemo: false,
-      challengeStartDate: Date.now(), // Sets initial start date dynamically when first joining
+      challengeStartDate: Date.now(),
     });
     user = await ctx.db.get(userId);
   } else if (identity.name && user.name !== identity.name) {
@@ -105,58 +89,8 @@ export const getMe = query({
   },
 });
 
-export const getPartnerData = query({
-  args: {},
-  handler: async (ctx) => {
-    const user = await getUser(ctx);
-    if (!user || (user._id as string) === "pending_jit_user") return { partner: null, log: null };
-
-    const allUsers = await ctx.db.query("users").collect();
-    const partner = findActualPartner(allUsers, user);
-
-    if (!partner) return { partner: null, log: null };
-
-    const today = getAdjustedToday();
-    const partnerLog = await ctx.db
-      .query("dailyLogs")
-      .withIndex("by_user_date", (q) => q.eq("userId", partner._id).eq("date", today))
-      .first();
-
-    let photoUrl = null;
-    if (partnerLog?.photoStorageId) {
-      photoUrl = await ctx.storage.getUrl(partnerLog.photoStorageId);
-    }
-
-    return { partner, log: partnerLog ? { ...partnerLog, photoUrl } : null };
-  },
-});
-
 export const generateUploadUrl = mutation(async (ctx) => {
   return await ctx.storage.generateUploadUrl();
-});
-
-export const getAvailablePartners = query({
-  args: {},
-  handler: async (ctx) => {
-    const user = await getUser(ctx);
-    if (!user || (user._id as string) === "pending_jit_user") return [];
-    
-    // Only fetch other users
-    const allUsers = await ctx.db.query("users").collect();
-    return allUsers
-      .filter(u => u._id !== user._id)
-      .map(u => ({ _id: u._id, name: u.name, _creationTime: u._creationTime }))
-      .sort((a, b) => b._creationTime - a._creationTime);
-  }
-});
-
-export const linkPartnerId = mutation({
-  args: { partnerId: v.id("users") },
-  handler: async (ctx, args) => {
-    const user = await getOrCreateUser(ctx);
-    if (!user) return;
-    await ctx.db.patch(user._id, { partnerId: args.partnerId });
-  }
 });
 
 export const updateUserSettings = mutation({
@@ -165,7 +99,15 @@ export const updateUserSettings = mutation({
     vesselUnit: v.optional(v.union(v.literal("oz"), v.literal("ml"), v.literal("liters"))),
     dailyReadingGoal: v.optional(v.number()),
     bodyWeight: v.optional(v.number()),
-    weightUnit: v.optional(v.union(v.literal("lbs"), v.literal("kg")))
+    weightUnit: v.optional(v.union(v.literal("lbs"), v.literal("kg"))),
+    // NEW: Allow the privacy settings to pass through the API
+    privacySettings: v.optional(v.object({
+      shareWorkouts: v.boolean(),
+      shareWater: v.boolean(),
+      shareReading: v.boolean(),
+      shareDiet: v.boolean(),
+      sharePhotos: v.boolean()
+    }))
   },
   handler: async (ctx, args) => {
     const user = await getOrCreateUser(ctx);
@@ -175,22 +117,16 @@ export const updateUserSettings = mutation({
       ...(args.dailyReadingGoal && { dailyReadingGoal: args.dailyReadingGoal }),
       ...(args.bodyWeight && { bodyWeight: args.bodyWeight }),
       ...(args.weightUnit && { weightUnit: args.weightUnit }),
+      ...(args.privacySettings && { privacySettings: args.privacySettings }),
     });
   },
-});
-
-export const renameUserForced = mutation({
-  args: { userId: v.id("users"), name: v.string() },
-  handler: async (ctx, args) => {
-    await ctx.db.patch(args.userId, { name: args.name });
-  }
 });
 
 export const evaluateContinuity = mutation({
   args: {},
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return; // Gracefully exit if auth hasn't fully synced to the Convex context yet
+    if (!identity) return; 
     
     const user = await getOrCreateUser(ctx);
     if (!user.challengeStartDate) return;
@@ -204,11 +140,10 @@ export const evaluateContinuity = mutation({
     yesterday.setDate(yesterday.getDate() - 1);
     const yesterdayStr = yesterday.toISOString().split("T")[0];
 
-    // Convert challengeStartDate to equivalent date constraint
     const start = new Date(user.challengeStartDate);
     start.setHours(start.getHours() - 2);
     const startDayStr = start.toISOString().split("T")[0];
-    if (startDayStr === todayStr) return; // Started today, no check needed
+    if (startDayStr === todayStr) return; 
 
     const yesterdayLog = await ctx.db
       .query("dailyLogs")
@@ -242,9 +177,9 @@ export const updateLog = mutation({
     waterTotal: v.optional(v.number()),
     readingTotal: v.optional(v.number()),
     workout1: v.optional(v.object({ done: v.boolean(), notes: v.optional(v.string()), cals: v.optional(v.number()) })),
-    workout1Done: v.optional(v.boolean()), // Legacy trigger for fast-clicks
+    workout1Done: v.optional(v.boolean()),
     workout2: v.optional(v.object({ done: v.boolean(), notes: v.optional(v.string()), cals: v.optional(v.number()) })),
-    workout2Done: v.optional(v.boolean()), // Legacy trigger
+    workout2Done: v.optional(v.boolean()),
     diet: v.optional(v.boolean()),
     photoStorageId: v.optional(v.id("_storage")),
     qAndA: v.optional(v.array(v.object({ question: v.string(), answer: v.string() }))),
@@ -280,17 +215,6 @@ export const updateLog = mutation({
         status: args.vouchRequested ? "vouch_pending" : "on_time",
       });
 
-      let actionType = "Started grinding today";
-      if (args.workout1Done || args.workout1?.done) actionType = "Logged an Outdoor Workout";
-      else if (args.workout2Done || args.workout2?.done) actionType = "Logged an Indoor Workout";
-      else if (args.readingTotal !== undefined) actionType = "Logged some Pages";
-      else if (args.waterTotal !== undefined) actionType = "Started drinking water";
-      await ctx.scheduler.runAfter(0, (internal as any).push.notifyPartnerAction, {
-        userId: user._id,
-        userName: user.name,
-        actionType,
-      });
-
       return newLogId;
     }
 
@@ -306,55 +230,8 @@ export const updateLog = mutation({
       ...(args.qAndA !== undefined && { qAndA: args.qAndA }),
       ...(args.vouchRequested !== undefined && { status: args.vouchRequested ? "vouch_pending" : existingLog.status }),
     });
-
-    let actionType = "Updated their log";
-    if (args.workout1Done || args.workout1?.done) actionType = "Logged an Outdoor Workout";
-    else if (args.workout2Done || args.workout2?.done) actionType = "Logged an Indoor Workout";
-    else if (args.photoStorageId) actionType = "Uploaded a Progress Photo!";
-    else if (args.qAndA) actionType = "Added a reflection to the Vault";
-    else if (args.readingTotal !== undefined) actionType = "Logged some Pages";
-    else if (args.waterTotal !== undefined) actionType = "Checked in Hydration";
-    else if (args.diet !== undefined) actionType = args.diet ? "Maintained Diet" : "Missed the Diet";
-    
-    await ctx.scheduler.runAfter(0, (internal as any).push.notifyPartnerAction, {
-      userId: user._id,
-      userName: user.name,
-      actionType,
-    });
     
     return existingLog._id;
-  },
-});
-
-export const resolveVouch = mutation({
-  args: {
-    logId: v.id("dailyLogs"),
-    approved: v.boolean(),
-  },
-  handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
-
-    const log = await ctx.db.get(args.logId);
-    if (!log) return;
-
-    if (args.approved) {
-      await ctx.db.patch(args.logId, { status: "vouched" });
-      
-      const identityClerk = identity.subject;
-      const allUsers = await ctx.db.query("users").collect();
-      // Find the user whose log this is (partner of the one who just vouched)
-      const targetUser = allUsers.find(u => u._id === log.userId);
-      
-      if (targetUser && targetUser.lastFailedStartDate) {
-        // Restore their streak!
-        await ctx.db.patch(targetUser._id, {
-          challengeStartDate: targetUser.lastFailedStartDate,
-        });
-      }
-    } else {
-      await ctx.db.patch(args.logId, { status: "failed" });
-    }
   },
 });
 
@@ -399,58 +276,15 @@ export const requestBackfill = mutation({
     } else {
       await ctx.db.patch(existingLog._id, { status: "vouch_pending" });
     }
-
-    await ctx.scheduler.runAfter(0, (internal as any).push.notifyPartnerAction, {
-      userId: user._id,
-      userName: user.name,
-      actionType: "Requested a Backfill Vouch!",
-    });
   }
 });
 
-export const addReaction = mutation({
-  args: { logId: v.id("dailyLogs"), emoji: v.string() },
-  handler: async (ctx, args) => {
-    const user = await getOrCreateUser(ctx);
-    if (!user) return;
-    
-    const log = await ctx.db.get(args.logId);
-    if (!log) return;
-    
-    const currentReactions = log.reactions || [];
-    currentReactions.push(args.emoji);
-    
-    await ctx.db.patch(args.logId, { reactions: currentReactions });
-    
-    // Notify the user who owns the log
-    await ctx.scheduler.runAfter(0, (internal as any).push.notifyPartnerAction, {
-      userId: user._id,
-      userName: user.name,
-      actionType: `Reacted ${args.emoji} to your log!`,
-    });
-  }
-});
-
+// NEW SQUAD AGGREGATES QUERY
 export const getGlobalAggregates = query({
   args: {},
   handler: async (ctx) => {
     const user = await getUser(ctx);
     if (!user || (user._id as string) === "pending_jit_user") return null;
-
-    const allUsers = await ctx.db.query("users").collect();
-    const partner = findActualPartner(allUsers, user);
-
-    const userLogs = await ctx.db
-      .query("dailyLogs")
-      .withIndex("by_user_date", (q) => q.eq("userId", user._id))
-      .collect();
-
-    const partnerLogs = partner 
-      ? await ctx.db
-          .query("dailyLogs")
-          .withIndex("by_user_date", (q) => q.eq("userId", partner._id))
-          .collect()
-      : [];
 
     const computeStats = (logs: any[], vesselSize: number) => {
       let totalWater = 0;
@@ -468,11 +302,44 @@ export const getGlobalAggregates = query({
       return { totalWater, totalPages, totalCals, workoutCount };
     };
 
+    // 1. Get User's Logs
+    const userLogs = await ctx.db
+      .query("dailyLogs")
+      .withIndex("by_user_date", (q) => q.eq("userId", user._id))
+      .collect();
+
+    // 2. Fetch the entire Squad
+    let squadArray: any[] = [];
+    
+    // If user has a squad ID, grab everyone in it. If not, just return their own stats.
+    if (user.squadId) {
+      const squadMembers = await ctx.db
+        .query("users")
+        .withIndex("by_squad", (q) => q.eq("squadId", user.squadId as string)) // Type casting to satisfy TypeScript
+        .collect();
+
+      // Filter out the active user so they don't appear twice in the directory
+      const otherMembers = squadMembers.filter(m => m._id !== user._id);
+
+      // Map over other members and fetch their logs
+      squadArray = await Promise.all(otherMembers.map(async (member) => {
+        const memberLogs = await ctx.db
+          .query("dailyLogs")
+          .withIndex("by_user_date", (q) => q.eq("userId", member._id))
+          .collect();
+        
+        return {
+          user: member,
+          stats: computeStats(memberLogs, member.vesselSize),
+          logs: memberLogs
+        };
+      }));
+    }
+
     return {
       userStats: computeStats(userLogs, user.vesselSize),
-      partnerStats: partner ? computeStats(partnerLogs, partner.vesselSize) : null,
-      partnerName: partner?.name.split(" ")[0] || "Partner",
-      userLogs // Returned so the frontend can build the calendar map
+      userLogs,
+      squad: squadArray 
     };
   }
 });
