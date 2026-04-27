@@ -13,6 +13,7 @@ export default function SquadDirectoryDashboard() {
   
   const [selectedUserDetailed, setSelectedUserDetailed] = useState<any | null>(null);
   const [selectedLogDay, setSelectedLogDay] = useState<any | null>(null);
+  const [expandedPhotoUrl, setExpandedPhotoUrl] = useState<string | null>(null); // NEW: State for full screen photo
 
   if (data === undefined || me === undefined) {
     return (
@@ -102,7 +103,6 @@ export default function SquadDirectoryDashboard() {
                     <span className="text-[9px] text-neutral-600 uppercase tracking-widest font-bold">Deep Dive &rarr;</span>
                   </div>
 
-                  {/* Dot Matrix - Now strictly shows Completion Status, ignoring privacy masks */}
                   <div className="flex items-center justify-between w-full bg-neutral-950/50 p-2 rounded-xl border border-neutral-800/50">
                     <div className="flex flex-col items-center gap-1 group/item">
                       <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors ${isW1 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-neutral-800 text-neutral-600'}`}>
@@ -268,13 +268,13 @@ export default function SquadDirectoryDashboard() {
       {/* Individual Day Modal */}
       <AnimatePresence>
         {selectedLogDay && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-40 flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setSelectedLogDay(null)} />
             <motion.div 
               initial={{ scale: 0.95, opacity: 0, y: 20 }} 
               animate={{ scale: 1, opacity: 1, y: 0 }} 
               exit={{ scale: 0.95, opacity: 0, y: 20 }} 
-              className="bg-neutral-900 border border-neutral-800 p-6 rounded-3xl shadow-2xl relative z-10 w-full max-w-sm max-h-[85vh] overflow-y-auto hide-scrollbar"
+              className="bg-neutral-900 border border-neutral-800 p-6 rounded-3xl shadow-2xl relative z-10 w-full max-w-md max-h-[85vh] overflow-y-auto hide-scrollbar"
             >
               <div className="flex justify-between items-start mb-6">
                 <div>
@@ -364,8 +364,14 @@ export default function SquadDirectoryDashboard() {
                   
                   {selectedLogDay.photoStorageId && (
                     targetUser.privacySettings?.sharePhotos && selectedLogDay.photoUrl ? (
-                      <div className="mt-3 relative w-full h-48 rounded-lg overflow-hidden border border-neutral-800">
-                        <img src={selectedLogDay.photoUrl} alt="Progress" className="w-full h-full object-cover" />
+                      <div 
+                        onClick={() => setExpandedPhotoUrl(selectedLogDay.photoUrl)}
+                        className="mt-3 relative w-full h-48 rounded-lg overflow-hidden border border-neutral-800 cursor-pointer group/img"
+                      >
+                        <img src={selectedLogDay.photoUrl} alt="Progress" className="w-full h-full object-cover transition-transform duration-500 group-hover/img:scale-105" />
+                        <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/20 transition-colors flex items-center justify-center">
+                          <span className="opacity-0 group-hover/img:opacity-100 text-white font-bold text-xs tracking-widest uppercase bg-black/50 px-3 py-1 rounded-full backdrop-blur-sm transition-opacity">Expand</span>
+                        </div>
                       </div>
                     ) : (
                       <div className="mt-3 flex items-center justify-center h-24 border border-dashed border-neutral-800 rounded-lg gap-2 text-neutral-600">
@@ -377,6 +383,40 @@ export default function SquadDirectoryDashboard() {
                 </div>
 
               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* FULL SCREEN PHOTO VIEWER */}
+      <AnimatePresence>
+        {expandedPhotoUrl && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }} 
+              className="absolute inset-0 bg-black/95 backdrop-blur-xl" 
+              onClick={() => setExpandedPhotoUrl(null)} 
+            />
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }} 
+              animate={{ scale: 1, opacity: 1 }} 
+              exit={{ scale: 0.9, opacity: 0 }} 
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="relative z-10 w-full max-w-4xl max-h-[90vh] flex flex-col items-center justify-center"
+            >
+              <button 
+                onClick={() => setExpandedPhotoUrl(null)} 
+                className="absolute top-4 right-4 p-3 bg-neutral-800/80 rounded-full text-neutral-300 hover:text-white hover:bg-neutral-700 transition-colors z-20 backdrop-blur-md"
+              >
+                <X size={24} />
+              </button>
+              <img 
+                src={expandedPhotoUrl} 
+                alt="Full Screen Progress" 
+                className="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl"
+              />
             </motion.div>
           </div>
         )}
