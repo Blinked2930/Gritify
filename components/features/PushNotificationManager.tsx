@@ -35,33 +35,31 @@ export function PushNotificationManager() {
         setPermissionState(Notification.permission);
       }
       
-      // If they already granted it, sync the sub silently
+      // If they already granted it, sync the sub silently in the background
       if (Notification.permission === 'granted') {
         syncSubscription();
       }
     }
   }, []);
 
-  const syncSubscription = async (forceRequest = false) => {
+  // This function now ONLY handles the service worker and saving the sub,
+  // assuming permission is already granted.
+  const syncSubscription = async () => {
     const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
     if (!vapidKey) return false;
 
     try {
-      // THE FIX: Explicitly register the background worker to prevent the 404
       const registration = await navigator.serviceWorker.register('/sw.js');
-      await navigator.serviceWorker.ready; // Wait for it to be fully active
+      await navigator.serviceWorker.ready;
 
       let subscription = await registration.pushManager.getSubscription();
 
-      if (!subscription && forceRequest) {
-        const permission = await Notification.requestPermission();
-        setPermissionState(permission);
-        if (permission === 'granted') {
-          subscription = await registration.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: urlBase64ToUint8Array(vapidKey),
-          });
-        }
+      // If they don't have a sub yet, make one
+      if (!subscription) {
+        subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(vapidKey),
+        });
       }
 
       if (subscription) {
@@ -75,12 +73,20 @@ export function PushNotificationManager() {
   };
 
   const handleGrant = async () => {
-    localStorage.setItem("gritify_skip_push", "true");
-    const success = await syncSubscription(true);
-    if (Notification.permission !== "default") {
-      setPermissionState(Notification.permission);
-    } else {
-      setPermissionState("denied"); 
+    try {
+      // 1. CRITICAL iOS FIX: Ask for permission IMMEDIATELY on click.
+      const permission = await Notification.requestPermission();
+      
+      // 2. Update the UI state
+      setPermissionState(permission);
+      localStorage.setItem("gritify_skip_push", "true");
+
+      // 3. If they hit allow, run the background worker logic
+      if (permission === 'granted') {
+        await syncSubscription();
+      }
+    } catch (error) {
+      console.error("Failed to request permission", error);
     }
   };
 

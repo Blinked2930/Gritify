@@ -13,7 +13,7 @@ export default function SquadDirectoryDashboard() {
   
   const [selectedUserDetailed, setSelectedUserDetailed] = useState<any | null>(null);
   const [selectedLogDay, setSelectedLogDay] = useState<any | null>(null);
-  const [expandedPhotoUrl, setExpandedPhotoUrl] = useState<string | null>(null); // NEW: State for full screen photo
+  const [expandedPhotoUrl, setExpandedPhotoUrl] = useState<string | null>(null);
 
   if (data === undefined || me === undefined) {
     return (
@@ -72,7 +72,7 @@ export default function SquadDirectoryDashboard() {
             </div>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-4">
             {fullSquadList.map((member, idx) => {
               const todayLog = getTodayLogForUser(member.logs || []);
               const u = member.user;
@@ -93,57 +93,57 @@ export default function SquadDirectoryDashboard() {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: idx * 0.05 }}
                   onClick={() => setSelectedUserDetailed(member)}
-                  className={`w-full bg-neutral-900/60 backdrop-blur-md border rounded-2xl p-4 text-left relative overflow-hidden group transition-all flex flex-col gap-3 ${member.isMe ? 'border-emerald-500/30' : 'border-neutral-800'}`}
+                  className={`w-full bg-neutral-900/60 backdrop-blur-md border rounded-3xl p-5 text-left relative overflow-hidden group transition-all flex flex-col gap-4 ${member.isMe ? 'border-emerald-500/30' : 'border-neutral-800'}`}
                 >
                   <div className="flex justify-between items-center w-full">
                     <h2 className="text-base font-black uppercase text-white tracking-widest flex items-center gap-2">
                       {member.isMe ? <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" /> : <User size={14} className="text-neutral-500" />}
                       {member.user.name}
                     </h2>
-                    <span className="text-[9px] text-neutral-600 uppercase tracking-widest font-bold">Deep Dive &rarr;</span>
+                    <span className="text-[10px] text-neutral-500 uppercase tracking-widest font-bold group-hover:text-emerald-400 transition-colors">Deep Dive &rarr;</span>
                   </div>
 
-                  <div className="flex items-center justify-between w-full bg-neutral-950/50 p-2 rounded-xl border border-neutral-800/50">
-                    <div className="flex flex-col items-center gap-1 group/item">
-                      <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors ${isW1 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-neutral-800 text-neutral-600'}`}>
-                        <Flame size={12} />
+                  <div className="flex items-center justify-between w-full bg-neutral-950/80 p-3 rounded-xl border border-neutral-800/80">
+                    <div className="flex flex-col items-center gap-1.5 group/item">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${isW1 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-neutral-800 text-neutral-400'}`}>
+                        <Flame size={14} />
                       </div>
-                      <span className="text-[8px] uppercase tracking-widest font-bold text-neutral-500">W1</span>
+                      <span className="text-[9px] uppercase tracking-widest font-bold text-neutral-500">W1</span>
                     </div>
 
-                    <div className="flex flex-col items-center gap-1 group/item">
-                      <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors ${isW2 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-neutral-800 text-neutral-600'}`}>
-                        <Activity size={12} />
+                    <div className="flex flex-col items-center gap-1.5 group/item">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${isW2 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-neutral-800 text-neutral-400'}`}>
+                        <Activity size={14} />
                       </div>
-                      <span className="text-[8px] uppercase tracking-widest font-bold text-neutral-500">W2</span>
+                      <span className="text-[9px] uppercase tracking-widest font-bold text-neutral-500">W2</span>
                     </div>
 
-                    <div className="flex flex-col items-center gap-1 group/item">
-                      <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors ${isWater ? 'bg-emerald-500/20 text-emerald-400' : 'bg-neutral-800 text-neutral-600'}`}>
-                        <Droplet size={12} />
+                    <div className="flex flex-col items-center gap-1.5 group/item">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${isWater ? 'bg-emerald-500/20 text-emerald-400' : 'bg-neutral-800 text-neutral-400'}`}>
+                        <Droplet size={14} />
                       </div>
-                      <span className="text-[8px] uppercase tracking-widest font-bold text-neutral-500">H2O</span>
+                      <span className="text-[9px] uppercase tracking-widest font-bold text-neutral-500">H2O</span>
                     </div>
 
-                    <div className="flex flex-col items-center gap-1 group/item">
-                      <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors ${isRead ? 'bg-emerald-500/20 text-emerald-400' : 'bg-neutral-800 text-neutral-600'}`}>
-                        <BookOpen size={12} />
+                    <div className="flex flex-col items-center gap-1.5 group/item">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${isRead ? 'bg-emerald-500/20 text-emerald-400' : 'bg-neutral-800 text-neutral-400'}`}>
+                        <BookOpen size={14} />
                       </div>
-                      <span className="text-[8px] uppercase tracking-widest font-bold text-neutral-500">Read</span>
+                      <span className="text-[9px] uppercase tracking-widest font-bold text-neutral-500">Read</span>
                     </div>
 
-                    <div className="flex flex-col items-center gap-1 group/item">
-                      <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors ${isDiet ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-500'}`}>
-                        <Utensils size={12} />
+                    <div className="flex flex-col items-center gap-1.5 group/item">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${isDiet ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-500'}`}>
+                        <Utensils size={14} />
                       </div>
-                      <span className="text-[8px] uppercase tracking-widest font-bold text-neutral-500">Diet</span>
+                      <span className="text-[9px] uppercase tracking-widest font-bold text-neutral-500">Diet</span>
                     </div>
 
-                    <div className="flex flex-col items-center gap-1 group/item">
-                      <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors ${isPhoto ? 'bg-emerald-500/20 text-emerald-400' : 'bg-neutral-800 text-neutral-600'}`}>
-                        <Camera size={12} />
+                    <div className="flex flex-col items-center gap-1.5 group/item">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${isPhoto ? 'bg-emerald-500/20 text-emerald-400' : 'bg-neutral-800 text-neutral-400'}`}>
+                        <Camera size={14} />
                       </div>
-                      <span className="text-[8px] uppercase tracking-widest font-bold text-neutral-500">Pic</span>
+                      <span className="text-[9px] uppercase tracking-widest font-bold text-neutral-500">Pic</span>
                     </div>
                   </div>
                 </motion.button>
@@ -274,7 +274,7 @@ export default function SquadDirectoryDashboard() {
               initial={{ scale: 0.95, opacity: 0, y: 20 }} 
               animate={{ scale: 1, opacity: 1, y: 0 }} 
               exit={{ scale: 0.95, opacity: 0, y: 20 }} 
-              className="bg-neutral-900 border border-neutral-800 p-6 rounded-3xl shadow-2xl relative z-10 w-full max-w-md max-h-[85vh] overflow-y-auto hide-scrollbar"
+              className="bg-neutral-900 border border-neutral-800 p-6 rounded-3xl shadow-2xl relative z-10 w-full max-w-sm max-h-[85vh] overflow-y-auto hide-scrollbar"
             >
               <div className="flex justify-between items-start mb-6">
                 <div>

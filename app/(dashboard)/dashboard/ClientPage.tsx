@@ -8,7 +8,7 @@ import { Camera, Settings, X, PlusCircle, MinusCircle, CheckCircle, NotebookPen,
 import Link from "next/link";
 import { DAILY_VAULT_QUESTIONS as QUESTIONS } from "@/lib/vault-questions";
 import { CustomDropdown } from "@/components/features/CustomDropdown";
-import { useClerk } from "@clerk/nextjs"; // NEW: Importing Clerk's hook for logout
+import { useClerk } from "@clerk/nextjs";
 
 const EXERCISE_OPTIONS = [
   { label: "Running", value: "running", met: 9.8 },
@@ -50,7 +50,7 @@ export default function DashboardClient() {
 }
 
 function DashboardMain({ user }: { user: any }) {
-  const { signOut } = useClerk(); // NEW: Initializing the sign-out function
+  const { signOut } = useClerk();
   
   const log = useQuery(api.logs.getTodayLog);
   const updateLog = useMutation(api.logs.updateLog);
@@ -451,7 +451,6 @@ function DashboardMain({ user }: { user: any }) {
                     Confirm
                   </button>
                   
-                  {/* NEW: Clerk Sign Out Button */}
                   <button 
                     onClick={() => signOut({ redirectUrl: '/' })}
                     className="w-full py-4 bg-transparent border border-red-500/30 hover:bg-red-500/10 hover:border-red-500/50 text-red-500 font-black tracking-widest rounded-xl transition-all mt-3 uppercase text-sm"
@@ -469,7 +468,7 @@ function DashboardMain({ user }: { user: any }) {
         {workoutPanelOpen && (
           <>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setWorkoutPanelOpen(null)} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40" />
-            <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 200 }} className="fixed bottom-0 left-0 right-0 bg-neutral-900 border-t border-neutral-800 rounded-t-3xl p-6 z-50 flex flex-col pb-10">
+            <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 200 }} className="fixed bottom-0 left-0 right-0 bg-neutral-900 border-t border-neutral-800 rounded-t-3xl p-6 z-50 flex flex-col pb-safe">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-black text-white uppercase tracking-tight">Log {workoutPanelOpen === "workout1" ? "Outdoor" : "Indoor"} Session</h2>
                 <button onClick={() => setWorkoutPanelOpen(null)} className="bg-neutral-800 p-2 rounded-full text-neutral-400 hover:text-white transition-colors"><X size={18} /></button>
@@ -484,9 +483,9 @@ function DashboardMain({ user }: { user: any }) {
                   <input type="number" value={workoutDuration} onChange={(e) => setWorkoutDuration(e.target.value)} className="w-full bg-neutral-950 border border-neutral-800 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500 transition-colors font-mono text-lg" />
                 </div>
               </div>
-              <div className="mt-8 flex gap-3">
-                <button onClick={() => handleLogWorkout(workoutPanelOpen, false)} className="flex-1 py-4 bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-black tracking-widest rounded-xl transition-all uppercase text-sm shadow-[0_0_20px_rgba(16,185,129,0.3)] flex items-center justify-center gap-2"><Flame size={18} /> Calculate & Log</button>
-                <button onClick={() => handleLogWorkout(workoutPanelOpen, true)} className="px-6 py-4 bg-neutral-800 hover:bg-neutral-700 text-white font-black tracking-widest rounded-xl transition-all uppercase text-sm">Skip Let's Go</button>
+              <div className="mt-8 flex gap-2">
+                <button onClick={() => handleLogWorkout(workoutPanelOpen, false)} className="flex-[3] py-4 bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-black tracking-widest rounded-xl transition-all uppercase text-[11px] sm:text-sm shadow-[0_0_20px_rgba(16,185,129,0.3)] flex items-center justify-center gap-1.5 whitespace-nowrap"><Flame size={16} /> Calc & Log</button>
+                <button onClick={() => handleLogWorkout(workoutPanelOpen, true)} className="flex-[2] py-4 bg-neutral-800 hover:bg-neutral-700 text-white font-black tracking-widest rounded-xl transition-all uppercase text-[11px] sm:text-sm whitespace-nowrap">Skip</button>
               </div>
             </motion.div>
           </>
