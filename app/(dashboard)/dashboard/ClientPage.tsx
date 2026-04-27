@@ -177,7 +177,8 @@ function DashboardMain({ user }: { user: any }) {
   const currentWaterAmountStr = log ? ((log?.waterTotal || 0) * (user?.vesselSize || 128)) : 0;
   const waterTarget = user?.vesselUnit === "liters" ? 3.78 : user?.vesselUnit === "ml" ? 3785 : 128;
   const isWaterMet = currentWaterAmountStr >= waterTarget;
-  const isPagesMet = log ? (log?.readingTotal || 0) >= (user?.dailyReadingGoal || 10) : false;
+  const readingGoal = user?.dailyReadingGoal || 10; // Derived the reading goal variable
+  const isPagesMet = log ? (log?.readingTotal || 0) >= readingGoal : false;
   const isW1Met = log?.workout1?.done;
   const isW2Met = log?.workout2?.done;
   const isDisciplineMet = log?.diet && log?.photoStorageId;
@@ -302,20 +303,21 @@ function DashboardMain({ user }: { user: any }) {
               <h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2">
                 <BookOpen size={16} className={isPagesMet ? "text-emerald-500" : "text-amber-500"} /> Reading
               </h3>
-              <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest mt-1">Goal: {user?.dailyReadingGoal || 10} Pages Non-Fiction</p>
+              <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest mt-1">Goal: {readingGoal} Pages Non-Fiction</p>
             </div>
           </div>
           <div className="flex items-end justify-between mt-4">
             <div className="flex items-baseline gap-1">
               <span className="text-5xl font-black tracking-tighter text-white">{log?.readingTotal || 0}</span>
-              <span className="text-sm font-bold text-neutral-500 mb-1">/ {user?.dailyReadingGoal || 10}</span>
+              <span className="text-sm font-bold text-neutral-500 mb-1">/ {readingGoal}</span>
             </div>
             <form onSubmit={handleAddPages} className="flex gap-2 w-1/2">
+              {/* CRITICAL FIX: Add defaultValue so user doesn't have to type 10 manually */}
               <input 
                 type="number" 
                 name="pages" 
                 required 
-                placeholder="+ pgs" 
+                defaultValue={readingGoal}
                 className="w-16 bg-neutral-950 border border-neutral-800 rounded-2xl px-2 py-3 text-center text-neutral-200 font-bold focus:outline-none focus:border-emerald-500 transition-colors" 
               />
               <button 
