@@ -56,7 +56,7 @@ export default function SquadDirectoryDashboard() {
   // ==========================================
   if (!selectedUserDetailed) {
     return (
-      <div className="min-h-screen bg-neutral-950 text-neutral-50 p-4 sm:p-6 font-sans overflow-x-hidden pb-32 relative">
+      <div className="min-h-screen bg-neutral-950 text-neutral-50 px-4 pb-4 pt-[calc(env(safe-area-inset-top)+16px)] sm:px-6 sm:pb-6 sm:pt-[calc(env(safe-area-inset-top)+24px)] font-sans overflow-x-hidden pb-32 relative">
         <div className="absolute top-0 left-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-[100px] pointer-events-none" />
         
         <div className="max-w-4xl mx-auto space-y-6 relative z-10">
@@ -177,7 +177,7 @@ export default function SquadDirectoryDashboard() {
   });
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-50 p-4 sm:p-6 font-sans overflow-x-hidden pb-32 relative">
+    <div className="min-h-screen bg-neutral-950 text-neutral-50 px-4 pb-4 pt-[calc(env(safe-area-inset-top)+16px)] sm:px-6 sm:pb-6 sm:pt-[calc(env(safe-area-inset-top)+24px)] font-sans overflow-x-hidden pb-32 relative">
       <div className="max-w-4xl mx-auto space-y-8 relative z-10">
         
         <div className="flex items-center gap-4 border-b border-neutral-800/50 pb-6 pt-4">
