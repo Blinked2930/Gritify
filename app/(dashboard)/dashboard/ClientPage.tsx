@@ -8,6 +8,7 @@ import { Camera, Settings, X, PlusCircle, MinusCircle, CheckCircle, NotebookPen,
 import Link from "next/link";
 import { DAILY_VAULT_QUESTIONS as QUESTIONS } from "@/lib/vault-questions";
 import { CustomDropdown } from "@/components/features/CustomDropdown";
+import { useClerk } from "@clerk/nextjs"; // NEW: Importing Clerk's hook for logout
 
 const EXERCISE_OPTIONS = [
   { label: "Running", value: "running", met: 9.8 },
@@ -49,6 +50,8 @@ export default function DashboardClient() {
 }
 
 function DashboardMain({ user }: { user: any }) {
+  const { signOut } = useClerk(); // NEW: Initializing the sign-out function
+  
   const log = useQuery(api.logs.getTodayLog);
   const updateLog = useMutation(api.logs.updateLog);
   const updateSettings = useMutation(api.logs.updateUserSettings);
@@ -422,31 +425,40 @@ function DashboardMain({ user }: { user: any }) {
                   ))}
                 </div>
 
-                <button 
-                  onClick={() => {
-                    const parsed = parseFloat(vesselSizeInput);
-                    const bwParsed = parseFloat(bodyWeightInput);
-                    
-                    if (!isNaN(parsed) && parsed > 0) {
-                      updateSettings({ 
-                        vesselSize: parsed, 
-                        vesselUnit: vesselUnitInput,
-                        privacySettings,
-                        ...(isNaN(bwParsed) ? {} : { bodyWeight: bwParsed, weightUnit: weightUnitInput })
-                      });
-                    }
-                    
-                    // Automatically trigger the join mutation if they entered a code
-                    if (squadIdInput !== (user?.squadId || "")) {
-                      joinSquad({ squadId: squadIdInput });
-                    }
+                <div className="pt-2">
+                  <button 
+                    onClick={() => {
+                      const parsed = parseFloat(vesselSizeInput);
+                      const bwParsed = parseFloat(bodyWeightInput);
+                      
+                      if (!isNaN(parsed) && parsed > 0) {
+                        updateSettings({ 
+                          vesselSize: parsed, 
+                          vesselUnit: vesselUnitInput,
+                          privacySettings,
+                          ...(isNaN(bwParsed) ? {} : { bodyWeight: bwParsed, weightUnit: weightUnitInput })
+                        });
+                      }
+                      
+                      if (squadIdInput !== (user?.squadId || "")) {
+                        joinSquad({ squadId: squadIdInput });
+                      }
 
-                    setSettingsOpen(false);
-                  }}
-                  className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-black tracking-widest rounded-xl transition-all mt-6 uppercase text-sm shadow-[0_0_20px_rgba(16,185,129,0.2)]"
-                >
-                  Confirm
-                </button>
+                      setSettingsOpen(false);
+                    }}
+                    className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-black tracking-widest rounded-xl transition-all mt-6 uppercase text-sm shadow-[0_0_20px_rgba(16,185,129,0.2)]"
+                  >
+                    Confirm
+                  </button>
+                  
+                  {/* NEW: Clerk Sign Out Button */}
+                  <button 
+                    onClick={() => signOut({ redirectUrl: '/' })}
+                    className="w-full py-4 bg-transparent border border-red-500/30 hover:bg-red-500/10 hover:border-red-500/50 text-red-500 font-black tracking-widest rounded-xl transition-all mt-3 uppercase text-sm"
+                  >
+                    Log Out
+                  </button>
+                </div>
               </div>
             </motion.div>
           </div>
