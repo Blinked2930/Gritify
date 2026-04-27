@@ -2,7 +2,7 @@
 
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { ArrowLeft, Flame, Droplet, BookOpen, Activity, Loader2, Utensils, ShieldAlert, User, CheckCircle, Camera } from "lucide-react";
+import { ArrowLeft, Flame, Droplet, BookOpen, Activity, Loader2, Utensils, ShieldAlert, User, CheckCircle, Camera, X } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -43,7 +43,6 @@ export default function SquadDirectoryDashboard() {
     ...rawSquadArray
   ];
 
-  // Helper to get exactly today's log to power the dot-matrix
   const getTodayLogForUser = (logs: any[]) => {
     const now = new Date();
     now.setHours(now.getHours() - 2);
@@ -103,57 +102,49 @@ export default function SquadDirectoryDashboard() {
                     <span className="text-[9px] text-neutral-600 uppercase tracking-widest font-bold">Deep Dive &rarr;</span>
                   </div>
 
-                  {/* The Mobile-First Dot Matrix */}
+                  {/* Dot Matrix - Now strictly shows Completion Status, ignoring privacy masks */}
                   <div className="flex items-center justify-between w-full bg-neutral-950/50 p-2 rounded-xl border border-neutral-800/50">
-                    
-                    {/* W1 */}
                     <div className="flex flex-col items-center gap-1 group/item">
-                      <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors ${u.privacySettings?.shareWorkouts === false ? 'bg-neutral-900 text-neutral-700' : isW1 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-neutral-800 text-neutral-600'}`}>
-                        {u.privacySettings?.shareWorkouts === false ? <ShieldAlert size={10} /> : <Flame size={12} />}
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors ${isW1 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-neutral-800 text-neutral-600'}`}>
+                        <Flame size={12} />
                       </div>
                       <span className="text-[8px] uppercase tracking-widest font-bold text-neutral-500">W1</span>
                     </div>
 
-                    {/* W2 */}
                     <div className="flex flex-col items-center gap-1 group/item">
-                      <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors ${u.privacySettings?.shareWorkouts === false ? 'bg-neutral-900 text-neutral-700' : isW2 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-neutral-800 text-neutral-600'}`}>
-                        {u.privacySettings?.shareWorkouts === false ? <ShieldAlert size={10} /> : <Activity size={12} />}
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors ${isW2 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-neutral-800 text-neutral-600'}`}>
+                        <Activity size={12} />
                       </div>
                       <span className="text-[8px] uppercase tracking-widest font-bold text-neutral-500">W2</span>
                     </div>
 
-                    {/* Water */}
                     <div className="flex flex-col items-center gap-1 group/item">
-                      <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors ${u.privacySettings?.shareWater === false ? 'bg-neutral-900 text-neutral-700' : isWater ? 'bg-emerald-500/20 text-emerald-400' : 'bg-neutral-800 text-neutral-600'}`}>
-                        {u.privacySettings?.shareWater === false ? <ShieldAlert size={10} /> : <Droplet size={12} />}
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors ${isWater ? 'bg-emerald-500/20 text-emerald-400' : 'bg-neutral-800 text-neutral-600'}`}>
+                        <Droplet size={12} />
                       </div>
                       <span className="text-[8px] uppercase tracking-widest font-bold text-neutral-500">H2O</span>
                     </div>
 
-                    {/* Read */}
                     <div className="flex flex-col items-center gap-1 group/item">
-                      <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors ${u.privacySettings?.shareReading === false ? 'bg-neutral-900 text-neutral-700' : isRead ? 'bg-emerald-500/20 text-emerald-400' : 'bg-neutral-800 text-neutral-600'}`}>
-                        {u.privacySettings?.shareReading === false ? <ShieldAlert size={10} /> : <BookOpen size={12} />}
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors ${isRead ? 'bg-emerald-500/20 text-emerald-400' : 'bg-neutral-800 text-neutral-600'}`}>
+                        <BookOpen size={12} />
                       </div>
                       <span className="text-[8px] uppercase tracking-widest font-bold text-neutral-500">Read</span>
                     </div>
 
-                    {/* Diet */}
                     <div className="flex flex-col items-center gap-1 group/item">
-                      <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors ${u.privacySettings?.shareDiet === false ? 'bg-neutral-900 text-neutral-700' : isDiet ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-500'}`}>
-                        {u.privacySettings?.shareDiet === false ? <ShieldAlert size={10} /> : <Utensils size={12} />}
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors ${isDiet ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-500'}`}>
+                        <Utensils size={12} />
                       </div>
                       <span className="text-[8px] uppercase tracking-widest font-bold text-neutral-500">Diet</span>
                     </div>
 
-                    {/* Photo */}
                     <div className="flex flex-col items-center gap-1 group/item">
-                      <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors ${u.privacySettings?.sharePhotos === false ? 'bg-neutral-900 text-neutral-700' : isPhoto ? 'bg-emerald-500/20 text-emerald-400' : 'bg-neutral-800 text-neutral-600'}`}>
-                        {u.privacySettings?.sharePhotos === false ? <ShieldAlert size={10} /> : <Camera size={12} />}
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors ${isPhoto ? 'bg-emerald-500/20 text-emerald-400' : 'bg-neutral-800 text-neutral-600'}`}>
+                        <Camera size={12} />
                       </div>
                       <span className="text-[8px] uppercase tracking-widest font-bold text-neutral-500">Pic</span>
                     </div>
-
                   </div>
                 </motion.button>
               );
@@ -203,44 +194,41 @@ export default function SquadDirectoryDashboard() {
 
         {/* Aggregate Stats (Filtered by Privacy) */}
         <div className="grid grid-cols-2 gap-4 relative z-10">
-          {targetUser.privacySettings?.shareWorkouts !== false ? (
-            <>
-              <div className="bg-neutral-900/40 border border-neutral-800 p-5 rounded-2xl">
-                <p className="flex items-center text-neutral-500 text-[10px] font-bold uppercase tracking-widest mb-1 gap-1"><Flame size={12} className="text-orange-500" /> Cals</p>
-                <p className="text-2xl font-black text-white">{targetStats?.totalCals?.toLocaleString() || 0}</p>
-              </div>
-              <div className="bg-neutral-900/40 border border-neutral-800 p-5 rounded-2xl">
-                <p className="flex items-center text-neutral-500 text-[10px] font-bold uppercase tracking-widest mb-1 gap-1"><Activity size={12} className="text-violet-500" /> Workouts</p>
-                <p className="text-2xl font-black text-white">{targetStats?.workoutCount || 0}</p>
-              </div>
-            </>
-          ) : (
-            <div className="col-span-2 flex items-center border border-dashed border-neutral-800 rounded-xl p-4 text-neutral-600 bg-neutral-950/50">
-              <ShieldAlert size={16} className="mr-2" /> Workouts Masked
-            </div>
-          )}
+          <div className="bg-neutral-900/40 border border-neutral-800 p-5 rounded-2xl">
+            <p className="flex items-center text-neutral-500 text-[10px] font-bold uppercase tracking-widest mb-1 gap-1"><Flame size={12} className="text-orange-500" /> Cals</p>
+            {targetUser.privacySettings?.shareWorkouts !== false ? (
+              <p className="text-2xl font-black text-white">{targetStats?.totalCals?.toLocaleString() || 0}</p>
+            ) : (
+              <p className="text-xs font-bold text-neutral-600 uppercase flex items-center gap-1 mt-2"><ShieldAlert size={14} /> Hidden</p>
+            )}
+          </div>
 
-          {targetUser.privacySettings?.shareWater !== false ? (
-            <div className="bg-neutral-900/40 border border-neutral-800 p-5 rounded-2xl">
-              <p className="flex items-center text-neutral-500 text-[10px] font-bold uppercase tracking-widest mb-1 gap-1"><Droplet size={12} className="text-blue-500" /> Water</p>
+          <div className="bg-neutral-900/40 border border-neutral-800 p-5 rounded-2xl">
+            <p className="flex items-center text-neutral-500 text-[10px] font-bold uppercase tracking-widest mb-1 gap-1"><Activity size={12} className="text-violet-500" /> Workouts</p>
+            {targetUser.privacySettings?.shareWorkouts !== false ? (
+              <p className="text-2xl font-black text-white">{targetStats?.workoutCount || 0}</p>
+            ) : (
+              <p className="text-xs font-bold text-neutral-600 uppercase flex items-center gap-1 mt-2"><ShieldAlert size={14} /> Hidden</p>
+            )}
+          </div>
+
+          <div className="bg-neutral-900/40 border border-neutral-800 p-5 rounded-2xl">
+            <p className="flex items-center text-neutral-500 text-[10px] font-bold uppercase tracking-widest mb-1 gap-1"><Droplet size={12} className="text-blue-500" /> Water</p>
+            {targetUser.privacySettings?.shareWater !== false ? (
               <p className="text-2xl font-black text-white">{targetStats?.totalWater?.toLocaleString() || 0}</p>
-            </div>
-          ) : (
-            <div className="flex items-center border border-dashed border-neutral-800 rounded-xl p-4 text-neutral-600 bg-neutral-950/50">
-              <ShieldAlert size={16} className="mr-2" /> Water Masked
-            </div>
-          )}
+            ) : (
+              <p className="text-xs font-bold text-neutral-600 uppercase flex items-center gap-1 mt-2"><ShieldAlert size={14} /> Hidden</p>
+            )}
+          </div>
 
-          {targetUser.privacySettings?.shareReading !== false ? (
-            <div className="bg-neutral-900/40 border border-neutral-800 p-5 rounded-2xl">
-              <p className="flex items-center text-neutral-500 text-[10px] font-bold uppercase tracking-widest mb-1 gap-1"><BookOpen size={12} className="text-amber-500" /> Pages</p>
+          <div className="bg-neutral-900/40 border border-neutral-800 p-5 rounded-2xl">
+            <p className="flex items-center text-neutral-500 text-[10px] font-bold uppercase tracking-widest mb-1 gap-1"><BookOpen size={12} className="text-amber-500" /> Pages</p>
+            {targetUser.privacySettings?.shareReading !== false ? (
               <p className="text-2xl font-black text-white">{targetStats?.totalPages?.toLocaleString() || 0}</p>
-            </div>
-          ) : (
-            <div className="flex items-center border border-dashed border-neutral-800 rounded-xl p-4 text-neutral-600 bg-neutral-950/50">
-              <ShieldAlert size={16} className="mr-2"/> Pages Masked
-            </div>
-          )}
+            ) : (
+              <p className="text-xs font-bold text-neutral-600 uppercase flex items-center gap-1 mt-2"><ShieldAlert size={14} /> Hidden</p>
+            )}
+          </div>
         </div>
 
         {/* Heatmap Grid */}
@@ -300,62 +288,94 @@ export default function SquadDirectoryDashboard() {
               
               <div className="space-y-4">
                 <div className="grid grid-cols-3 gap-2 mb-4">
-                  {targetUser.privacySettings?.shareWater !== false ? (
-                    <div className="bg-neutral-950 border border-neutral-800/80 p-3 rounded-xl flex flex-col items-center justify-center gap-1">
-                      <Droplet size={14} className="text-blue-500/80" />
-                      <span className="font-black text-white text-base">{(selectedLogDay.waterTotal * (targetUser.vesselSize || 1)).toFixed((targetUser.vesselUnit === 'liters') ? 2 : 0)}</span>
-                    </div>
-                  ) : (
-                    <div className="bg-neutral-950 border border-neutral-800/80 p-3 rounded-xl flex items-center justify-center"><ShieldAlert size={14} className="text-neutral-700"/></div>
-                  )}
+                  {/* Water Block */}
+                  <div className="bg-neutral-950 border border-neutral-800/80 p-3 rounded-xl flex flex-col items-center justify-center gap-1">
+                    <Droplet size={14} className={selectedLogDay.waterTotal > 0 ? "text-blue-500" : "text-neutral-600"} />
+                    {targetUser.privacySettings?.shareWater !== false ? (
+                      <span className="font-black text-white text-base">{(selectedLogDay.waterTotal * (targetUser.vesselSize || 1)).toFixed(0)}</span>
+                    ) : (
+                      <span className="text-[10px] text-neutral-600 font-bold uppercase mt-1">Hidden</span>
+                    )}
+                  </div>
 
-                  {targetUser.privacySettings?.shareReading !== false ? (
-                    <div className="bg-neutral-950 border border-neutral-800/80 p-3 rounded-xl flex flex-col items-center justify-center gap-1">
-                      <BookOpen size={14} className="text-amber-500/80" />
+                  {/* Reading Block */}
+                  <div className="bg-neutral-950 border border-neutral-800/80 p-3 rounded-xl flex flex-col items-center justify-center gap-1">
+                    <BookOpen size={14} className={selectedLogDay.readingTotal > 0 ? "text-amber-500" : "text-neutral-600"} />
+                    {targetUser.privacySettings?.shareReading !== false ? (
                       <span className="font-black text-white text-base">{selectedLogDay.readingTotal}</span>
-                    </div>
-                  ) : (
-                    <div className="bg-neutral-950 border border-neutral-800/80 p-3 rounded-xl flex items-center justify-center"><ShieldAlert size={14} className="text-neutral-700"/></div>
-                  )}
+                    ) : (
+                      <span className="text-[10px] text-neutral-600 font-bold uppercase mt-1">Hidden</span>
+                    )}
+                  </div>
 
-                  {targetUser.privacySettings?.shareDiet !== false ? (
-                    <div className="bg-neutral-950 border border-neutral-800/80 p-3 rounded-xl flex flex-col items-center justify-center gap-1">
-                      <Utensils size={14} className={selectedLogDay.diet ? "text-emerald-500/80" : "text-red-500/80"} />
+                  {/* Diet Block */}
+                  <div className="bg-neutral-950 border border-neutral-800/80 p-3 rounded-xl flex flex-col items-center justify-center gap-1">
+                    <Utensils size={14} className={selectedLogDay.diet ? "text-emerald-500" : "text-red-500"} />
+                    {targetUser.privacySettings?.shareDiet !== false ? (
                       <span className="font-black text-white text-xs mt-1">{selectedLogDay.diet ? "CLEAN" : "DIRTY"}</span>
-                    </div>
-                  ) : (
-                    <div className="bg-neutral-950 border border-neutral-800/80 p-3 rounded-xl flex items-center justify-center"><ShieldAlert size={14} className="text-neutral-700"/></div>
-                  )}
+                    ) : (
+                      <span className="text-[10px] text-neutral-600 font-bold uppercase mt-1">Hidden</span>
+                    )}
+                  </div>
                 </div>
 
-                {targetUser.privacySettings?.shareWorkouts !== false && (
-                  <>
-                    <div className="bg-neutral-950 border border-neutral-800 p-4 rounded-xl relative overflow-hidden group">
-                      <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-2 flex items-center"><Flame size={12} className="text-orange-500 mr-2"/> Outdoor</p>
+                {/* Workout 1 */}
+                <div className="bg-neutral-950 border border-neutral-800 p-4 rounded-xl relative overflow-hidden group">
+                  <div className="flex justify-between items-center mb-2">
+                    <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest flex items-center"><Flame size={12} className="text-orange-500 mr-2"/> Outdoor</p>
+                    {selectedLogDay.workout1.done ? <CheckCircle size={14} className="text-emerald-500" /> : <X size={14} className="text-neutral-600" />}
+                  </div>
+                  {targetUser.privacySettings?.shareWorkouts !== false ? (
+                    <>
                       <p className="text-white font-black text-base tracking-tight uppercase">{selectedLogDay.workout1.notes || "Standard"}</p>
                       <div className="flex mt-2 items-center gap-2">
                         <span className="bg-orange-500/10 text-orange-500 font-black tracking-widest text-[8px] px-2 py-1 rounded border border-orange-500/20">{selectedLogDay.workout1.cals || 0} KCAL</span>
-                        {selectedLogDay.workout1.done && <span className="bg-emerald-500/10 text-emerald-500 font-black tracking-widest text-[8px] px-2 py-1 rounded border border-emerald-500/20">VERIFIED</span>}
                       </div>
-                    </div>
+                    </>
+                  ) : (
+                    <p className="text-neutral-600 font-bold text-[10px] uppercase tracking-widest mt-2 flex items-center gap-1"><ShieldAlert size={10}/> Details Hidden</p>
+                  )}
+                </div>
 
-                    <div className="bg-neutral-950 border border-neutral-800 p-4 rounded-xl relative overflow-hidden group">
-                      <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-2 flex items-center"><Activity size={12} className="text-violet-500 mr-2"/> Indoor</p>
+                {/* Workout 2 */}
+                <div className="bg-neutral-950 border border-neutral-800 p-4 rounded-xl relative overflow-hidden group">
+                  <div className="flex justify-between items-center mb-2">
+                    <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest flex items-center"><Activity size={12} className="text-violet-500 mr-2"/> Indoor</p>
+                    {selectedLogDay.workout2.done ? <CheckCircle size={14} className="text-emerald-500" /> : <X size={14} className="text-neutral-600" />}
+                  </div>
+                  {targetUser.privacySettings?.shareWorkouts !== false ? (
+                    <>
                       <p className="text-white font-black text-base tracking-tight uppercase">{selectedLogDay.workout2.notes || "Standard"}</p>
                       <div className="flex mt-2 items-center gap-2">
                         <span className="bg-violet-500/10 text-violet-500 font-black tracking-widest text-[8px] px-2 py-1 rounded border border-violet-500/20">{selectedLogDay.workout2.cals || 0} KCAL</span>
-                        {selectedLogDay.workout2.done && <span className="bg-emerald-500/10 text-emerald-500 font-black tracking-widest text-[8px] px-2 py-1 rounded border border-emerald-500/20">VERIFIED</span>}
                       </div>
-                    </div>
-                  </>
-                )}
+                    </>
+                  ) : (
+                    <p className="text-neutral-600 font-bold text-[10px] uppercase tracking-widest mt-2 flex items-center gap-1"><ShieldAlert size={10}/> Details Hidden</p>
+                  )}
+                </div>
 
-                {targetUser.privacySettings?.sharePhotos && selectedLogDay.photoStorageId && (
-                  <div className="flex items-center justify-center p-3 rounded-xl border border-dashed border-emerald-900/50 bg-emerald-500/5 text-emerald-500 gap-2">
-                    <CheckCircle size={14} />
-                    <span className="text-[10px] font-bold uppercase tracking-widest">Visual Confirmed</span>
+                {/* Photo Rendering */}
+                <div className="bg-neutral-950 border border-neutral-800 p-4 rounded-xl relative overflow-hidden group">
+                  <div className="flex justify-between items-center mb-2">
+                    <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest flex items-center"><Camera size={12} className="text-emerald-500 mr-2"/> Progress Photo</p>
+                    {selectedLogDay.photoStorageId ? <CheckCircle size={14} className="text-emerald-500" /> : <X size={14} className="text-neutral-600" />}
                   </div>
-                )}
+                  
+                  {selectedLogDay.photoStorageId && (
+                    targetUser.privacySettings?.sharePhotos && selectedLogDay.photoUrl ? (
+                      <div className="mt-3 relative w-full h-48 rounded-lg overflow-hidden border border-neutral-800">
+                        <img src={selectedLogDay.photoUrl} alt="Progress" className="w-full h-full object-cover" />
+                      </div>
+                    ) : (
+                      <div className="mt-3 flex items-center justify-center h-24 border border-dashed border-neutral-800 rounded-lg gap-2 text-neutral-600">
+                        <ShieldAlert size={14} />
+                        <span className="text-[10px] font-bold uppercase tracking-widest">Image Hidden</span>
+                      </div>
+                    )
+                  )}
+                </div>
+
               </div>
             </motion.div>
           </div>

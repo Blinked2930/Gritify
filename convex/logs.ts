@@ -121,7 +121,6 @@ export const updateUserSettings = mutation({
   },
 });
 
-// NEW: Mutation to easily join or leave a squad
 export const joinSquad = mutation({
   args: { squadId: v.string() },
   handler: async (ctx, args) => {
@@ -216,10 +215,21 @@ export const getGlobalAggregates = query({
       return { totalWater, totalPages, totalCals, workoutCount };
     };
 
-    const userLogs = await ctx.db
+    // Helper to fetch urls for an array of logs
+    const attachUrlsToLogs = async (logs: any[]) => {
+      return await Promise.all(logs.map(async (l) => {
+        let photoUrl = null;
+        if (l.photoStorageId) photoUrl = await ctx.storage.getUrl(l.photoStorageId);
+        return { ...l, photoUrl };
+      }));
+    };
+
+    const userLogsRaw = await ctx.db
       .query("dailyLogs")
       .withIndex("by_user_date", (q) => q.eq("userId", user._id))
       .collect();
+      
+    const userLogs = await attachUrlsToLogs(userLogsRaw);
 
     let squadArray: any[] = [];
     
@@ -232,21 +242,23 @@ export const getGlobalAggregates = query({
       const otherMembers = squadMembers.filter(m => m._id !== user._id);
 
       squadArray = await Promise.all(otherMembers.map(async (member) => {
-        const memberLogs = await ctx.db
+        const memberLogsRaw = await ctx.db
           .query("dailyLogs")
           .withIndex("by_user_date", (q) => q.eq("userId", member._id))
           .collect();
+          
+        const memberLogs = await attachUrlsToLogs(memberLogsRaw);
         
         return {
           user: member,
-          stats: computeStats(memberLogs, member.vesselSize),
+          stats: computeStats(memberLogsRaw, member.vesselSize),
           logs: memberLogs
         };
       }));
     }
 
     return {
-      userStats: computeStats(userLogs, user.vesselSize),
+      userStats: computeStats(userLogsRaw, user.vesselSize),
       userLogs,
       squad: squadArray 
     };
