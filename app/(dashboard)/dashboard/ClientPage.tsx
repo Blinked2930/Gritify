@@ -4,7 +4,7 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useState, useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Camera, Settings, X, Plus, Minus, CheckCircle, Droplet, BookOpen, Users, Flame, Activity, ShieldCheck, Dumbbell } from "lucide-react";
+import { Camera, Settings, X, Plus, Minus, CheckCircle, Droplet, BookOpen, Users, Flame, Activity, ShieldCheck, Dumbbell, Shield } from "lucide-react";
 import Link from "next/link";
 import { DAILY_VAULT_QUESTIONS as QUESTIONS } from "@/lib/vault-questions";
 import { CustomDropdown } from "@/components/features/CustomDropdown";
