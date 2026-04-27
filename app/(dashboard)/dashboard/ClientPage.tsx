@@ -183,7 +183,8 @@ function DashboardMain({ user }: { user: any }) {
   const isDisciplineMet = log?.diet && log?.photoStorageId;
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-neutral-900 via-neutral-950 to-neutral-950 text-neutral-50 p-4 sm:p-6 font-sans selection:bg-emerald-500/30 overflow-x-hidden">
+    {/* CRITICAL FIX: pt-[calc(env(safe-area-inset-top)+1rem)] dynamically clears the iOS notch while keeping the background intact */}
+    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-neutral-900 via-neutral-950 to-neutral-950 text-neutral-50 px-4 sm:px-6 pt-[calc(env(safe-area-inset-top)+1rem)] font-sans selection:bg-emerald-500/30 overflow-x-hidden">
       <div className="max-w-4xl mx-auto space-y-4 pb-32">
         
         {/* NATIVE APP HEADER */}
@@ -484,7 +485,7 @@ function DashboardMain({ user }: { user: any }) {
         {workoutPanelOpen && (
           <>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setWorkoutPanelOpen(null)} className="fixed inset-0 bg-black/80 backdrop-blur-md z-40" />
-            <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 200 }} className="fixed bottom-0 left-0 right-0 bg-neutral-900 border-t border-neutral-800 rounded-t-[32px] p-6 z-50 flex flex-col pb-safe">
+            <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", damping: 25, stiffness: 200 }} className="fixed bottom-0 left-0 right-0 bg-neutral-900 border-t border-neutral-800 rounded-t-[32px] p-6 z-50 flex flex-col pb-[calc(env(safe-area-inset-bottom)+1.5rem)]">
               <div className="flex justify-between items-center mb-8">
                 <h2 className="text-lg font-black text-white uppercase tracking-widest">Log {workoutPanelOpen === "workout1" ? "Outdoor" : "Indoor"}</h2>
                 <button onClick={() => setWorkoutPanelOpen(null)} className="bg-neutral-800 p-2 rounded-full text-neutral-400 hover:text-white transition-colors"><X size={16} /></button>
