@@ -107,7 +107,7 @@ function DashboardMain({ user }: { user: any }) {
   let currentDay = 1;
   const now = new Date();
   now.setHours(now.getHours() - 2);
-  if (user.challengeStartDate) {
+  if (user?.challengeStartDate) {
     const start = new Date(user.challengeStartDate);
     start.setHours(start.getHours() - 2);
     start.setHours(0,0,0,0);
@@ -140,8 +140,8 @@ function DashboardMain({ user }: { user: any }) {
     } else {
       const selected = EXERCISE_OPTIONS.find(o => o.value === workoutType);
       const met = selected?.met || 5.0;
-      const weightMultiplier = (user.weightUnit === "kg" || weightUnitInput === "kg") ? 1 : 0.453592;
-      const weightKg = (user.bodyWeight || 150) * weightMultiplier;
+      const weightMultiplier = (user?.weightUnit === "kg" || weightUnitInput === "kg") ? 1 : 0.453592;
+      const weightKg = (user?.bodyWeight || 150) * weightMultiplier;
       const durationHours = (parseFloat(workoutDuration) || 45) / 60;
       const calsBurned = Math.round(met * weightKg * durationHours);
       
@@ -174,10 +174,10 @@ function DashboardMain({ user }: { user: any }) {
     }
   };
 
-  const currentWaterAmountStr = log ? (log.waterTotal * user.vesselSize) : 0;
-  const waterTarget = user.vesselUnit === "liters" ? 3.78 : user.vesselUnit === "ml" ? 3785 : 128;
+  const currentWaterAmountStr = log ? ((log?.waterTotal || 0) * (user?.vesselSize || 128)) : 0;
+  const waterTarget = user?.vesselUnit === "liters" ? 3.78 : user?.vesselUnit === "ml" ? 3785 : 128;
   const isWaterMet = currentWaterAmountStr >= waterTarget;
-  const isPagesMet = log ? log.readingTotal >= user.dailyReadingGoal : false;
+  const isPagesMet = log ? (log?.readingTotal || 0) >= (user?.dailyReadingGoal || 10) : false;
   const isW1Met = log?.workout1?.done;
   const isW2Met = log?.workout2?.done;
   const isDisciplineMet = log?.diet && log?.photoStorageId;
@@ -194,7 +194,7 @@ function DashboardMain({ user }: { user: any }) {
             </h1>
             <div className="inline-flex items-center gap-2 mt-1 bg-neutral-900/80 px-3 py-1 rounded-full border border-neutral-800">
               <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-              <span className="text-[10px] font-bold text-neutral-300 uppercase tracking-widest">Day {currentDay} of 75</span>
+              <span className="text-[10px] font-bold text-neutral-300 uppercase tracking-widest">Day {currentDay || 1} of 75</span>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -266,12 +266,12 @@ function DashboardMain({ user }: { user: any }) {
               <h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2">
                 <Droplet size={16} className={isWaterMet ? "text-emerald-500" : "text-blue-500"} /> Hydration
               </h3>
-              <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest mt-1">Goal: {waterTarget} {user.vesselUnit}</p>
+              <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest mt-1">Goal: {waterTarget} {user?.vesselUnit || "oz"}</p>
             </div>
           </div>
           <div className="flex items-end justify-between mt-4">
             <div className="flex items-baseline gap-1">
-              <span className="text-5xl font-black tracking-tighter text-white">{currentWaterAmountStr.toFixed(user.vesselUnit === "liters" ? 2 : 0)}</span>
+              <span className="text-5xl font-black tracking-tighter text-white">{currentWaterAmountStr.toFixed(user?.vesselUnit === "liters" ? 2 : 0)}</span>
               <span className="text-sm font-bold text-neutral-500 mb-1">/ {waterTarget}</span>
             </div>
             <div className="flex items-center gap-3">
@@ -302,13 +302,13 @@ function DashboardMain({ user }: { user: any }) {
               <h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2">
                 <BookOpen size={16} className={isPagesMet ? "text-emerald-500" : "text-amber-500"} /> Reading
               </h3>
-              <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest mt-1">Goal: {user.dailyReadingGoal} Pages Non-Fiction</p>
+              <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest mt-1">Goal: {user?.dailyReadingGoal || 10} Pages Non-Fiction</p>
             </div>
           </div>
           <div className="flex items-end justify-between mt-4">
             <div className="flex items-baseline gap-1">
               <span className="text-5xl font-black tracking-tighter text-white">{log?.readingTotal || 0}</span>
-              <span className="text-sm font-bold text-neutral-500 mb-1">/ {user.dailyReadingGoal}</span>
+              <span className="text-sm font-bold text-neutral-500 mb-1">/ {user?.dailyReadingGoal || 10}</span>
             </div>
             <form onSubmit={handleAddPages} className="flex gap-2 w-1/2">
               <input 

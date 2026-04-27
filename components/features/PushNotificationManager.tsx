@@ -25,7 +25,8 @@ export function PushNotificationManager() {
   const saveSubscription = useMutation(api.pushSubs.saveSubscription);
 
   useEffect(() => {
-    if ("serviceWorker" in navigator && "PushManager" in window) {
+    // CRITICAL FIX: Must check if 'Notification' is actually in window to prevent PWA crashes
+    if (typeof window !== "undefined" && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window) {
       setIsSupported(true);
       
       const skipped = localStorage.getItem("gritify_skip_push");
@@ -35,15 +36,12 @@ export function PushNotificationManager() {
         setPermissionState(Notification.permission);
       }
       
-      // If they already granted it, sync the sub silently in the background
       if (Notification.permission === 'granted') {
         syncSubscription();
       }
     }
   }, []);
 
-  // This function now ONLY handles the service worker and saving the sub,
-  // assuming permission is already granted.
   const syncSubscription = async () => {
     const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
     if (!vapidKey) return false;
@@ -54,7 +52,6 @@ export function PushNotificationManager() {
 
       let subscription = await registration.pushManager.getSubscription();
 
-      // If they don't have a sub yet, make one
       if (!subscription) {
         subscription = await registration.pushManager.subscribe({
           userVisibleOnly: true,
@@ -74,14 +71,12 @@ export function PushNotificationManager() {
 
   const handleGrant = async () => {
     try {
-      // 1. CRITICAL iOS FIX: Ask for permission IMMEDIATELY on click.
+      if (!("Notification" in window)) return;
       const permission = await Notification.requestPermission();
       
-      // 2. Update the UI state
       setPermissionState(permission);
       localStorage.setItem("gritify_skip_push", "true");
 
-      // 3. If they hit allow, run the background worker logic
       if (permission === 'granted') {
         await syncSubscription();
       }

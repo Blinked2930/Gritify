@@ -76,13 +76,13 @@ export default function SquadDirectoryDashboard() {
             {fullSquadList.map((member, idx) => {
               const todayLog = getTodayLogForUser(member.logs || []);
               const u = member.user;
-              const waterTarget = u.vesselUnit === "liters" ? 3.78 : u.vesselUnit === "ml" ? 3785 : 128;
-              const currentWater = todayLog ? (todayLog.waterTotal * (u.vesselSize || 1)) : 0;
+              const waterTarget = u?.vesselUnit === "liters" ? 3.78 : u?.vesselUnit === "ml" ? 3785 : 128;
+              const currentWater = todayLog ? ((todayLog?.waterTotal || 0) * (u?.vesselSize || 1)) : 0;
               
               const isW1 = todayLog?.workout1?.done;
               const isW2 = todayLog?.workout2?.done;
               const isWater = currentWater >= waterTarget;
-              const isRead = todayLog ? todayLog.readingTotal >= u.dailyReadingGoal : false;
+              const isRead = todayLog ? (todayLog?.readingTotal || 0) >= (u?.dailyReadingGoal || 10) : false;
               const isDiet = todayLog?.diet;
               const isPhoto = todayLog?.photoStorageId;
 
@@ -163,6 +163,13 @@ export default function SquadDirectoryDashboard() {
   const targetLogs = selectedUserDetailed.logs || [];
   const isMe = selectedUserDetailed.isMe;
 
+  // PRIVACY LOGIC OVERRIDE: Nothing is blocked from yourself.
+  const canViewWorkouts = isMe || targetUser.privacySettings?.shareWorkouts !== false;
+  const canViewWater = isMe || targetUser.privacySettings?.shareWater !== false;
+  const canViewReading = isMe || targetUser.privacySettings?.shareReading !== false;
+  const canViewDiet = isMe || targetUser.privacySettings?.shareDiet !== false;
+  const canViewPhotos = isMe || targetUser.privacySettings?.sharePhotos !== false;
+
   const calendarBlocks = Array.from({ length: 75 }).map((_, i) => {
     const dayNum = i + 1;
     const sortedLogs = [...targetLogs].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
@@ -196,7 +203,7 @@ export default function SquadDirectoryDashboard() {
         <div className="grid grid-cols-2 gap-4 relative z-10">
           <div className="bg-neutral-900/40 border border-neutral-800 p-5 rounded-2xl">
             <p className="flex items-center text-neutral-500 text-[10px] font-bold uppercase tracking-widest mb-1 gap-1"><Flame size={12} className="text-orange-500" /> Cals</p>
-            {targetUser.privacySettings?.shareWorkouts !== false ? (
+            {canViewWorkouts ? (
               <p className="text-2xl font-black text-white">{targetStats?.totalCals?.toLocaleString() || 0}</p>
             ) : (
               <p className="text-xs font-bold text-neutral-600 uppercase flex items-center gap-1 mt-2"><ShieldAlert size={14} /> Hidden</p>
@@ -205,7 +212,7 @@ export default function SquadDirectoryDashboard() {
 
           <div className="bg-neutral-900/40 border border-neutral-800 p-5 rounded-2xl">
             <p className="flex items-center text-neutral-500 text-[10px] font-bold uppercase tracking-widest mb-1 gap-1"><Activity size={12} className="text-violet-500" /> Workouts</p>
-            {targetUser.privacySettings?.shareWorkouts !== false ? (
+            {canViewWorkouts ? (
               <p className="text-2xl font-black text-white">{targetStats?.workoutCount || 0}</p>
             ) : (
               <p className="text-xs font-bold text-neutral-600 uppercase flex items-center gap-1 mt-2"><ShieldAlert size={14} /> Hidden</p>
@@ -214,7 +221,7 @@ export default function SquadDirectoryDashboard() {
 
           <div className="bg-neutral-900/40 border border-neutral-800 p-5 rounded-2xl">
             <p className="flex items-center text-neutral-500 text-[10px] font-bold uppercase tracking-widest mb-1 gap-1"><Droplet size={12} className="text-blue-500" /> Water</p>
-            {targetUser.privacySettings?.shareWater !== false ? (
+            {canViewWater ? (
               <p className="text-2xl font-black text-white">{targetStats?.totalWater?.toLocaleString() || 0}</p>
             ) : (
               <p className="text-xs font-bold text-neutral-600 uppercase flex items-center gap-1 mt-2"><ShieldAlert size={14} /> Hidden</p>
@@ -223,7 +230,7 @@ export default function SquadDirectoryDashboard() {
 
           <div className="bg-neutral-900/40 border border-neutral-800 p-5 rounded-2xl">
             <p className="flex items-center text-neutral-500 text-[10px] font-bold uppercase tracking-widest mb-1 gap-1"><BookOpen size={12} className="text-amber-500" /> Pages</p>
-            {targetUser.privacySettings?.shareReading !== false ? (
+            {canViewReading ? (
               <p className="text-2xl font-black text-white">{targetStats?.totalPages?.toLocaleString() || 0}</p>
             ) : (
               <p className="text-xs font-bold text-neutral-600 uppercase flex items-center gap-1 mt-2"><ShieldAlert size={14} /> Hidden</p>
@@ -278,8 +285,8 @@ export default function SquadDirectoryDashboard() {
             >
               <div className="flex justify-between items-start mb-6">
                 <div>
-                  <h2 className="text-2xl font-black text-white uppercase tracking-tighter">Day {selectedLogDay.dayNum}</h2>
-                  <p className="text-emerald-500 font-bold text-xs tracking-widest uppercase mt-1">{selectedLogDay.date}</p>
+                  <h2 className="text-2xl font-black text-white uppercase tracking-tighter">Day {selectedLogDay?.dayNum}</h2>
+                  <p className="text-emerald-500 font-bold text-xs tracking-widest uppercase mt-1">{selectedLogDay?.date}</p>
                 </div>
                 <button onClick={() => setSelectedLogDay(null)} className="p-2 bg-neutral-800 rounded-full text-neutral-400 hover:text-white transition-colors">
                   <ArrowLeft className="w-5 h-5 rotate-[-45deg]" />
@@ -290,9 +297,9 @@ export default function SquadDirectoryDashboard() {
                 <div className="grid grid-cols-3 gap-2 mb-4">
                   {/* Water Block */}
                   <div className="bg-neutral-950 border border-neutral-800/80 p-3 rounded-xl flex flex-col items-center justify-center gap-1">
-                    <Droplet size={14} className={selectedLogDay.waterTotal > 0 ? "text-blue-500" : "text-neutral-600"} />
-                    {targetUser.privacySettings?.shareWater !== false ? (
-                      <span className="font-black text-white text-base">{(selectedLogDay.waterTotal * (targetUser.vesselSize || 1)).toFixed(0)}</span>
+                    <Droplet size={14} className={(selectedLogDay?.waterTotal || 0) > 0 ? "text-blue-500" : "text-neutral-600"} />
+                    {canViewWater ? (
+                      <span className="font-black text-white text-base">{((selectedLogDay?.waterTotal || 0) * (targetUser?.vesselSize || 1)).toFixed(0)}</span>
                     ) : (
                       <span className="text-[10px] text-neutral-600 font-bold uppercase mt-1">Hidden</span>
                     )}
@@ -300,9 +307,9 @@ export default function SquadDirectoryDashboard() {
 
                   {/* Reading Block */}
                   <div className="bg-neutral-950 border border-neutral-800/80 p-3 rounded-xl flex flex-col items-center justify-center gap-1">
-                    <BookOpen size={14} className={selectedLogDay.readingTotal > 0 ? "text-amber-500" : "text-neutral-600"} />
-                    {targetUser.privacySettings?.shareReading !== false ? (
-                      <span className="font-black text-white text-base">{selectedLogDay.readingTotal}</span>
+                    <BookOpen size={14} className={(selectedLogDay?.readingTotal || 0) > 0 ? "text-amber-500" : "text-neutral-600"} />
+                    {canViewReading ? (
+                      <span className="font-black text-white text-base">{selectedLogDay?.readingTotal || 0}</span>
                     ) : (
                       <span className="text-[10px] text-neutral-600 font-bold uppercase mt-1">Hidden</span>
                     )}
@@ -310,9 +317,9 @@ export default function SquadDirectoryDashboard() {
 
                   {/* Diet Block */}
                   <div className="bg-neutral-950 border border-neutral-800/80 p-3 rounded-xl flex flex-col items-center justify-center gap-1">
-                    <Utensils size={14} className={selectedLogDay.diet ? "text-emerald-500" : "text-red-500"} />
-                    {targetUser.privacySettings?.shareDiet !== false ? (
-                      <span className="font-black text-white text-xs mt-1">{selectedLogDay.diet ? "CLEAN" : "DIRTY"}</span>
+                    <Utensils size={14} className={selectedLogDay?.diet ? "text-emerald-500" : "text-red-500"} />
+                    {canViewDiet ? (
+                      <span className="font-black text-white text-xs mt-1">{selectedLogDay?.diet ? "CLEAN" : "DIRTY"}</span>
                     ) : (
                       <span className="text-[10px] text-neutral-600 font-bold uppercase mt-1">Hidden</span>
                     )}
@@ -323,13 +330,13 @@ export default function SquadDirectoryDashboard() {
                 <div className="bg-neutral-950 border border-neutral-800 p-4 rounded-xl relative overflow-hidden group">
                   <div className="flex justify-between items-center mb-2">
                     <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest flex items-center"><Flame size={12} className="text-orange-500 mr-2"/> Outdoor</p>
-                    {selectedLogDay.workout1.done ? <CheckCircle size={14} className="text-emerald-500" /> : <X size={14} className="text-neutral-600" />}
+                    {selectedLogDay?.workout1?.done ? <CheckCircle size={14} className="text-emerald-500" /> : <X size={14} className="text-neutral-600" />}
                   </div>
-                  {targetUser.privacySettings?.shareWorkouts !== false ? (
+                  {canViewWorkouts ? (
                     <>
-                      <p className="text-white font-black text-base tracking-tight uppercase">{selectedLogDay.workout1.notes || "Standard"}</p>
+                      <p className="text-white font-black text-base tracking-tight uppercase">{selectedLogDay?.workout1?.notes || "Standard"}</p>
                       <div className="flex mt-2 items-center gap-2">
-                        <span className="bg-orange-500/10 text-orange-500 font-black tracking-widest text-[8px] px-2 py-1 rounded border border-orange-500/20">{selectedLogDay.workout1.cals || 0} KCAL</span>
+                        <span className="bg-orange-500/10 text-orange-500 font-black tracking-widest text-[8px] px-2 py-1 rounded border border-orange-500/20">{selectedLogDay?.workout1?.cals || 0} KCAL</span>
                       </div>
                     </>
                   ) : (
@@ -341,13 +348,13 @@ export default function SquadDirectoryDashboard() {
                 <div className="bg-neutral-950 border border-neutral-800 p-4 rounded-xl relative overflow-hidden group">
                   <div className="flex justify-between items-center mb-2">
                     <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest flex items-center"><Activity size={12} className="text-violet-500 mr-2"/> Indoor</p>
-                    {selectedLogDay.workout2.done ? <CheckCircle size={14} className="text-emerald-500" /> : <X size={14} className="text-neutral-600" />}
+                    {selectedLogDay?.workout2?.done ? <CheckCircle size={14} className="text-emerald-500" /> : <X size={14} className="text-neutral-600" />}
                   </div>
-                  {targetUser.privacySettings?.shareWorkouts !== false ? (
+                  {canViewWorkouts ? (
                     <>
-                      <p className="text-white font-black text-base tracking-tight uppercase">{selectedLogDay.workout2.notes || "Standard"}</p>
+                      <p className="text-white font-black text-base tracking-tight uppercase">{selectedLogDay?.workout2?.notes || "Standard"}</p>
                       <div className="flex mt-2 items-center gap-2">
-                        <span className="bg-violet-500/10 text-violet-500 font-black tracking-widest text-[8px] px-2 py-1 rounded border border-violet-500/20">{selectedLogDay.workout2.cals || 0} KCAL</span>
+                        <span className="bg-violet-500/10 text-violet-500 font-black tracking-widest text-[8px] px-2 py-1 rounded border border-violet-500/20">{selectedLogDay?.workout2?.cals || 0} KCAL</span>
                       </div>
                     </>
                   ) : (
@@ -359,11 +366,11 @@ export default function SquadDirectoryDashboard() {
                 <div className="bg-neutral-950 border border-neutral-800 p-4 rounded-xl relative overflow-hidden group">
                   <div className="flex justify-between items-center mb-2">
                     <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest flex items-center"><Camera size={12} className="text-emerald-500 mr-2"/> Progress Photo</p>
-                    {selectedLogDay.photoStorageId ? <CheckCircle size={14} className="text-emerald-500" /> : <X size={14} className="text-neutral-600" />}
+                    {selectedLogDay?.photoStorageId ? <CheckCircle size={14} className="text-emerald-500" /> : <X size={14} className="text-neutral-600" />}
                   </div>
                   
-                  {selectedLogDay.photoStorageId && (
-                    targetUser.privacySettings?.sharePhotos && selectedLogDay.photoUrl ? (
+                  {selectedLogDay?.photoStorageId && (
+                    canViewPhotos && selectedLogDay?.photoUrl ? (
                       <div 
                         onClick={() => setExpandedPhotoUrl(selectedLogDay.photoUrl)}
                         className="mt-3 relative w-full h-48 rounded-lg overflow-hidden border border-neutral-800 cursor-pointer group/img"
