@@ -61,7 +61,8 @@ export default function SquadDirectoryDashboard() {
         
         <div className="max-w-4xl mx-auto space-y-6 relative z-10">
           <div className="flex items-center gap-4 border-b border-neutral-800/50 pb-6 pt-4">
-            <Link href="/dashboard" className="bg-neutral-900 border border-neutral-800 hover:border-emerald-500/50 p-3 rounded-full hover:bg-emerald-500/10 transition-all group">
+            {/* CRITICAL FIX: Changed href="/dashboard" to href="/" */}
+            <Link href="/" className="bg-neutral-900 border border-neutral-800 hover:border-emerald-500/50 p-3 rounded-full hover:bg-emerald-500/10 transition-all group">
               <ArrowLeft className="w-5 h-5 text-neutral-400 group-hover:text-emerald-400 transition-colors" />
             </Link>
             <div>
@@ -163,7 +164,7 @@ export default function SquadDirectoryDashboard() {
   const targetLogs = selectedUserDetailed.logs || [];
   const isMe = selectedUserDetailed.isMe;
 
-  // PRIVACY LOGIC OVERRIDE: Nothing is blocked from yourself.
+  // PRIVACY LOGIC: Your own data is ALWAYS visible to you.
   const canViewWorkouts = isMe || targetUser.privacySettings?.shareWorkouts !== false;
   const canViewWater = isMe || targetUser.privacySettings?.shareWater !== false;
   const canViewReading = isMe || targetUser.privacySettings?.shareReading !== false;
