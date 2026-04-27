@@ -1,17 +1,30 @@
 import { v } from "convex/values";
-import { mutation } from "./_generated/server";
+import { mutation, internalQuery, internalMutation } from "./_generated/server";
 
-export const getPartnerSubscriptions = mutation({
+export const getSquadSubscriptions = internalQuery({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
-    const allUsers = await ctx.db.query("users").collect();
-    const partner = allUsers.find((u) => u._id !== args.userId);
-    if (!partner) return [];
+    const user = await ctx.db.get(args.userId);
+    if (!user || !user.squadId) return [];
 
-    return await ctx.db
-      .query("pushSubscriptions")
-      .withIndex("by_user", (q) => q.eq("userId", partner._id))
+    // Find everyone else in the same squad
+    const squadMembers = await ctx.db
+      .query("users")
+      .withIndex("by_squad", (q) => q.eq("squadId", user.squadId as string))
       .collect();
+
+    // Isolate their IDs (excluding the user who triggered the action)
+    const otherMemberIds = squadMembers
+      .filter((m) => m._id !== args.userId)
+      .map((m) => m._id);
+
+    // Fetch all active push subscriptions
+    const allSubs = await ctx.db.query("pushSubscriptions").collect();
+    
+    // Return only the subscriptions that belong to your squad members
+    return allSubs.filter((sub) => 
+      otherMemberIds.some((id) => id === sub.userId)
+    );
   },
 });
 
@@ -47,7 +60,8 @@ export const saveSubscription = mutation({
   },
 });
 
-export const removeSubscription = mutation({
+// Used internally by the push worker to clean up dead/expired subscriptions
+export const removeSubscription = internalMutation({
   args: { subId: v.id("pushSubscriptions") },
   handler: async (ctx, args) => {
     await ctx.db.delete(args.subId);

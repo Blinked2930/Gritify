@@ -31,23 +31,23 @@ export const notifyPartnerAction = action({
       return;
     }
 
-    // Call a mutation helper to find partner subscriptions
-    const partnerSubscriptions = await ctx.runMutation((internal as any).pushSubs.getPartnerSubscriptions, {
+    // Call a new internal query to find ALL subscriptions for everyone in the SAME squad
+    const squadSubscriptions = await ctx.runQuery((internal as any).pushSubs.getSquadSubscriptions, {
       userId: args.userId,
     });
 
-    if (!partnerSubscriptions || partnerSubscriptions.length === 0) {
-      console.log("Partner has no active push subscriptions.");
+    if (!squadSubscriptions || squadSubscriptions.length === 0) {
+      console.log("No squad members have active push subscriptions.");
       return;
     }
 
     const payload = JSON.stringify({
       title: `${args.userName} Checked In`,
       body: args.actionType,
-      url: "/", // When they click the notification, go to dashboard
+      url: "/", 
     });
 
-    for (const sub of partnerSubscriptions) {
+    for (const sub of squadSubscriptions) {
       try {
         await webPush.sendNotification(sub.subscription, payload);
       } catch (err: any) {
