@@ -126,9 +126,21 @@ export const joinSquad = mutation({
   handler: async (ctx, args) => {
     const user = await getOrCreateUser(ctx);
     const cleanId = args.squadId.trim().toLowerCase();
-    return await ctx.db.patch(user._id, {
+    
+    await ctx.db.patch(user._id, {
       squadId: cleanId === "" ? undefined : cleanId
     });
+
+    // Notify the squad that someone just joined using the known user object
+    if (cleanId !== "" && cleanId !== user.squadId) {
+      await ctx.scheduler.runAfter(0, (internal as any).push.notifyPartnerAction, {
+        userId: user._id,
+        userName: user.name,
+        actionType: `Just joined the squad!`,
+      });
+    }
+    
+    return;
   }
 });
 
@@ -148,6 +160,8 @@ export const updateLog = mutation({
     const user = await getOrCreateUser(ctx);
     const today = getAdjustedToday();
 
+    let logId;
+
     const existingLog = await ctx.db
       .query("dailyLogs")
       .withIndex("by_user_date", (q) => q.eq("userId", user._id).eq("date", today))
@@ -160,7 +174,7 @@ export const updateLog = mutation({
         isActive: true,
       });
 
-      const newLogId = await ctx.db.insert("dailyLogs", {
+      logId = await ctx.db.insert("dailyLogs", {
         userId: user._id,
         challengeId: dummyChallengeId,
         date: today,
@@ -173,23 +187,40 @@ export const updateLog = mutation({
         qAndA: args.qAndA ?? [],
         status: "on_time",
       });
-
-      return newLogId;
+    } else {
+      await ctx.db.patch(existingLog._id, {
+        ...(args.waterTotal !== undefined && { waterTotal: args.waterTotal }),
+        ...(args.readingTotal !== undefined && { readingTotal: args.readingTotal }),
+        ...(args.diet !== undefined && { diet: args.diet }),
+        ...(args.workout1 !== undefined ? { workout1: { done: args.workout1.done, notes: args.workout1.notes || "", cals: args.workout1.cals || 0 } } : 
+           args.workout1Done !== undefined ? { workout1: { ...existingLog.workout1, done: args.workout1Done ?? false } } : {}),
+        ...(args.workout2 !== undefined ? { workout2: { done: args.workout2.done, notes: args.workout2.notes || "", cals: args.workout2.cals || 0 } } : 
+           args.workout2Done !== undefined ? { workout2: { ...existingLog.workout2, done: args.workout2Done ?? false } } : {}),
+        ...(args.photoStorageId !== undefined && { photoStorageId: args.photoStorageId }),
+        ...(args.qAndA !== undefined && { qAndA: args.qAndA }),
+      });
+      logId = existingLog._id;
     }
 
-    await ctx.db.patch(existingLog._id, {
-      ...(args.waterTotal !== undefined && { waterTotal: args.waterTotal }),
-      ...(args.readingTotal !== undefined && { readingTotal: args.readingTotal }),
-      ...(args.diet !== undefined && { diet: args.diet }),
-      ...(args.workout1 !== undefined ? { workout1: { done: args.workout1.done, notes: args.workout1.notes || "", cals: args.workout1.cals || 0 } } : 
-         args.workout1Done !== undefined ? { workout1: { ...existingLog.workout1, done: args.workout1Done ?? false } } : {}),
-      ...(args.workout2 !== undefined ? { workout2: { done: args.workout2.done, notes: args.workout2.notes || "", cals: args.workout2.cals || 0 } } : 
-         args.workout2Done !== undefined ? { workout2: { ...existingLog.workout2, done: args.workout2Done ?? false } } : {}),
-      ...(args.photoStorageId !== undefined && { photoStorageId: args.photoStorageId }),
-      ...(args.qAndA !== undefined && { qAndA: args.qAndA }),
-    });
+    // Determine what action was taken to formulate the push notification message
+    let actionType = "Updated their log";
+    if (args.workout1 !== undefined || args.workout1Done !== undefined) actionType = "Logged an Outdoor Workout";
+    else if (args.workout2 !== undefined || args.workout2Done !== undefined) actionType = "Logged an Indoor Workout";
+    else if (args.photoStorageId !== undefined) actionType = "Secured the Progress Photo";
+    else if (args.readingTotal !== undefined) actionType = "Logged Reading Pages";
+    else if (args.waterTotal !== undefined) actionType = "Logged Hydration";
+    else if (args.diet !== undefined) actionType = args.diet ? "Locked in the Diet" : "Slipped on the Diet";
     
-    return existingLog._id;
+    // Only attempt to send a push notification if the user is actually in a squad
+    if (user.squadId) {
+      await ctx.scheduler.runAfter(0, (internal as any).push.notifyPartnerAction, {
+        userId: user._id,
+        userName: user.name,
+        actionType,
+      });
+    }
+    
+    return logId;
   },
 });
 
