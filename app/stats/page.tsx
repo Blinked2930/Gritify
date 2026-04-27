@@ -61,7 +61,6 @@ export default function SquadDirectoryDashboard() {
         
         <div className="max-w-4xl mx-auto space-y-6 relative z-10">
           <div className="flex items-center gap-4 border-b border-neutral-800/50 pb-6 pt-4">
-            {/* CRITICAL FIX: Changed href="/dashboard" to href="/" */}
             <Link href="/" className="bg-neutral-900 border border-neutral-800 hover:border-emerald-500/50 p-3 rounded-full hover:bg-emerald-500/10 transition-all group">
               <ArrowLeft className="w-5 h-5 text-neutral-400 group-hover:text-emerald-400 transition-colors" />
             </Link>
@@ -106,42 +105,42 @@ export default function SquadDirectoryDashboard() {
 
                   <div className="flex items-center justify-between w-full bg-neutral-950/80 p-3 rounded-xl border border-neutral-800/80">
                     <div className="flex flex-col items-center gap-1.5 group/item">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${isW1 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-neutral-800 text-neutral-400'}`}>
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${isW1 ? 'bg-orange-500/20 text-orange-500' : 'bg-neutral-800 text-neutral-400'}`}>
                         <Flame size={14} />
                       </div>
                       <span className="text-[9px] uppercase tracking-widest font-bold text-neutral-500">W1</span>
                     </div>
 
                     <div className="flex flex-col items-center gap-1.5 group/item">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${isW2 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-neutral-800 text-neutral-400'}`}>
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${isW2 ? 'bg-violet-500/20 text-violet-500' : 'bg-neutral-800 text-neutral-400'}`}>
                         <Activity size={14} />
                       </div>
                       <span className="text-[9px] uppercase tracking-widest font-bold text-neutral-500">W2</span>
                     </div>
 
                     <div className="flex flex-col items-center gap-1.5 group/item">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${isWater ? 'bg-emerald-500/20 text-emerald-400' : 'bg-neutral-800 text-neutral-400'}`}>
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${isWater ? 'bg-blue-500/20 text-blue-500' : 'bg-neutral-800 text-neutral-400'}`}>
                         <Droplet size={14} />
                       </div>
                       <span className="text-[9px] uppercase tracking-widest font-bold text-neutral-500">H2O</span>
                     </div>
 
                     <div className="flex flex-col items-center gap-1.5 group/item">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${isRead ? 'bg-emerald-500/20 text-emerald-400' : 'bg-neutral-800 text-neutral-400'}`}>
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${isRead ? 'bg-amber-500/20 text-amber-500' : 'bg-neutral-800 text-neutral-400'}`}>
                         <BookOpen size={14} />
                       </div>
                       <span className="text-[9px] uppercase tracking-widest font-bold text-neutral-500">Read</span>
                     </div>
 
                     <div className="flex flex-col items-center gap-1.5 group/item">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${isDiet ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-500'}`}>
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${isDiet ? 'bg-emerald-500/20 text-emerald-500' : 'bg-red-500/20 text-red-500'}`}>
                         <Utensils size={14} />
                       </div>
                       <span className="text-[9px] uppercase tracking-widest font-bold text-neutral-500">Diet</span>
                     </div>
 
                     <div className="flex flex-col items-center gap-1.5 group/item">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${isPhoto ? 'bg-emerald-500/20 text-emerald-400' : 'bg-neutral-800 text-neutral-400'}`}>
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${isPhoto ? 'bg-cyan-500/20 text-cyan-500' : 'bg-neutral-800 text-neutral-400'}`}>
                         <Camera size={14} />
                       </div>
                       <span className="text-[9px] uppercase tracking-widest font-bold text-neutral-500">Pic</span>
@@ -164,12 +163,14 @@ export default function SquadDirectoryDashboard() {
   const targetLogs = selectedUserDetailed.logs || [];
   const isMe = selectedUserDetailed.isMe;
 
-  // PRIVACY LOGIC: Your own data is ALWAYS visible to you.
   const canViewWorkouts = isMe || targetUser.privacySettings?.shareWorkouts !== false;
   const canViewWater = isMe || targetUser.privacySettings?.shareWater !== false;
   const canViewReading = isMe || targetUser.privacySettings?.shareReading !== false;
   const canViewDiet = isMe || targetUser.privacySettings?.shareDiet !== false;
   const canViewPhotos = isMe || targetUser.privacySettings?.sharePhotos !== false;
+
+  const waterTarget = targetUser?.vesselUnit === "liters" ? 3.78 : targetUser?.vesselUnit === "ml" ? 3785 : 128;
+  const readingTarget = targetUser?.dailyReadingGoal || 10;
 
   const calendarBlocks = Array.from({ length: 75 }).map((_, i) => {
     const dayNum = i + 1;
@@ -200,7 +201,7 @@ export default function SquadDirectoryDashboard() {
           </div>
         </div>
 
-        {/* Aggregate Stats (Filtered by Privacy) */}
+        {/* Aggregate Stats */}
         <div className="grid grid-cols-2 gap-4 relative z-10">
           <div className="bg-neutral-900/40 border border-neutral-800 p-5 rounded-2xl">
             <p className="flex items-center text-neutral-500 text-[10px] font-bold uppercase tracking-widest mb-1 gap-1"><Flame size={12} className="text-orange-500" /> Cals</p>
@@ -239,19 +240,24 @@ export default function SquadDirectoryDashboard() {
           </div>
         </div>
 
-        {/* Heatmap Grid */}
+        {/* GARMIN STYLE HEATMAP GRID */}
         <div className="pt-2">
           <div className="flex overflow-x-auto snap-x snap-mandatory gap-3 sm:gap-4 select-none bg-neutral-900/20 p-5 rounded-3xl border border-neutral-800/30 backdrop-blur-xl pb-5 hide-scrollbar relative">
             {calendarBlocks.map((block, idx) => {
-              let bgClass = "bg-neutral-900 border-neutral-800 text-neutral-700 hover:bg-neutral-800/80";
-              if (block.state === "success") {
-                bgClass = "bg-gradient-to-b from-emerald-400 to-emerald-600 border-emerald-400 shadow-[0_0_25px_rgba(16,185,129,0.25)] text-emerald-950 hover:brightness-110 z-10 relative";
-              }
-              if (block.state === "pending") {
-                bgClass = "bg-gradient-to-b from-amber-400 to-amber-600 border-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.25)] text-amber-950 hover:brightness-110 z-10 relative";
-              }
-              if (block.state === "failed") {
-                bgClass = "bg-red-500/10 border-red-500/30 text-red-500/60 hover:bg-red-500/20 z-10 relative";
+              // Garmin Style Stacked Bars logic
+              const log = block.log;
+              const currentWater = log ? ((log.waterTotal || 0) * (targetUser?.vesselSize || 1)) : 0;
+              
+              const isW1 = log?.workout1?.done && canViewWorkouts;
+              const isW2 = log?.workout2?.done && canViewWorkouts;
+              const isWater = currentWater >= waterTarget && canViewWater;
+              const isRead = log && (log.readingTotal || 0) >= readingTarget && canViewReading;
+              const isDiet = log?.diet && canViewDiet;
+              const isPhoto = log?.photoStorageId && canViewPhotos;
+
+              let blockBg = "bg-neutral-900/50 border-neutral-800 text-neutral-600"; // Future state
+              if (block.state === "success" || block.state === "pending" || block.state === "failed") {
+                blockBg = "bg-neutral-900 border-neutral-700 text-white hover:bg-neutral-800"; // Has active log
               }
 
               return (
@@ -262,13 +268,35 @@ export default function SquadDirectoryDashboard() {
                   transition={{ delay: idx * 0.02 }}
                   disabled={block.state === "future"}
                   onClick={() => block.log && setSelectedLogDay({ ...block.log, dayNum: block.dayNum })}
-                  className={`flex-shrink-0 snap-center w-12 h-12 relative rounded-xl border border-b-[3px] flex items-center justify-center transition-all duration-300 font-extrabold text-lg tracking-tighter ${bgClass}`}
+                  className={`flex-shrink-0 snap-center w-14 h-[68px] relative rounded-xl border flex flex-col items-center justify-start pt-2 transition-all duration-300 font-extrabold text-base tracking-tighter ${blockBg} overflow-hidden`}
                 >
-                  <span className="relative z-20">{block.dayNum}</span>
+                  <span className="relative z-20 mb-1">{block.dayNum}</span>
+                  
+                  {/* The Garmin Segments */}
+                  {block.state !== "future" && (
+                    <div className="absolute bottom-1.5 left-1.5 right-1.5 flex gap-[2px] h-1.5">
+                      <div className={`flex-1 rounded-sm transition-colors ${isW1 ? 'bg-orange-500' : 'bg-neutral-800/80'}`} />
+                      <div className={`flex-1 rounded-sm transition-colors ${isW2 ? 'bg-violet-500' : 'bg-neutral-800/80'}`} />
+                      <div className={`flex-1 rounded-sm transition-colors ${isWater ? 'bg-blue-500' : 'bg-neutral-800/80'}`} />
+                      <div className={`flex-1 rounded-sm transition-colors ${isRead ? 'bg-amber-500' : 'bg-neutral-800/80'}`} />
+                      <div className={`flex-1 rounded-sm transition-colors ${isDiet ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                      <div className={`flex-1 rounded-sm transition-colors ${isPhoto ? 'bg-cyan-500' : 'bg-neutral-800/80'}`} />
+                    </div>
+                  )}
                 </motion.button>
               );
             })}
             <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-neutral-900/60 to-transparent pointer-events-none rounded-r-3xl" />
+          </div>
+          
+          {/* Calendar Legend */}
+          <div className="flex justify-between px-2 mt-3">
+             <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-orange-500"></div><span className="text-[8px] uppercase tracking-widest text-neutral-500 font-bold">W1</span></div>
+             <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-violet-500"></div><span className="text-[8px] uppercase tracking-widest text-neutral-500 font-bold">W2</span></div>
+             <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-blue-500"></div><span className="text-[8px] uppercase tracking-widest text-neutral-500 font-bold">H2O</span></div>
+             <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-amber-500"></div><span className="text-[8px] uppercase tracking-widest text-neutral-500 font-bold">Read</span></div>
+             <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-emerald-500"></div><span className="text-[8px] uppercase tracking-widest text-neutral-500 font-bold">Diet</span></div>
+             <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-cyan-500"></div><span className="text-[8px] uppercase tracking-widest text-neutral-500 font-bold">Pic</span></div>
           </div>
         </div>
       </div>
