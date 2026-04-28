@@ -1,5 +1,5 @@
 import { mutation, query } from "./_generated/server";
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { internal } from "./_generated/api";
 
 function getAdjustedToday() {
@@ -22,7 +22,7 @@ async function getUser(ctx: any) {
       _id: "pending_jit_user" as any,
       clerkId: identity.subject,
       name: identity.name || "Grinder",
-      vesselSize: 128,
+      vesselSize: 40,
       vesselUnit: "oz",
       dailyReadingGoal: 10,
       isDemo: false,
@@ -35,7 +35,7 @@ async function getUser(ctx: any) {
 
 async function getOrCreateUser(ctx: any) {
   const identity = await ctx.auth.getUserIdentity();
-  if (!identity) throw new Error("Not authenticated. The Grid requires login.");
+  if (!identity) throw new ConvexError("Not authenticated. The Grid requires login.");
 
   let user = await ctx.db
     .query("users")
@@ -43,17 +43,21 @@ async function getOrCreateUser(ctx: any) {
     .first();
 
   if (!user) {
-    const userId = await ctx.db.insert("users", {
-      clerkId: identity.subject,
-      name: identity.name || "Grinder",
-      vesselSize: 128,
-      vesselUnit: "oz",
-      dailyReadingGoal: 10,
-      isDemo: false,
-      challengeStartDate: Date.now(),
-      hasCompletedSetup: false,
-    });
-    user = await ctx.db.get(userId);
+    try {
+      const userId = await ctx.db.insert("users", {
+        clerkId: identity.subject,
+        name: identity.name || "Grinder",
+        vesselSize: 40,
+        vesselUnit: "oz",
+        dailyReadingGoal: 10,
+        isDemo: false,
+        challengeStartDate: Date.now(),
+        hasCompletedSetup: false,
+      });
+      user = await ctx.db.get(userId);
+    } catch (e: any) {
+      throw new ConvexError(`User Creation Failed: ${e.message}`);
+    }
   } else if (identity.name && user.name !== identity.name) {
     await ctx.db.patch(user._id, { name: identity.name });
     user.name = identity.name;
@@ -132,51 +136,62 @@ export const updateUserSettings = mutation({
     }))
   },
   handler: async (ctx, args) => {
-    const user = await getOrCreateUser(ctx);
-    return await ctx.db.patch(user._id, {
-      vesselSize: args.vesselSize,
-      ...(args.vesselUnit && { vesselUnit: args.vesselUnit }),
-      ...(args.dailyReadingGoal && { dailyReadingGoal: args.dailyReadingGoal }),
-      ...(args.bodyWeight && { bodyWeight: args.bodyWeight }),
-      ...(args.weightUnit && { weightUnit: args.weightUnit }),
-      ...(args.hasCompletedSetup !== undefined && { hasCompletedSetup: args.hasCompletedSetup }),
-      ...(args.privacySettings && { privacySettings: args.privacySettings }),
-    });
+    try {
+      const user = await getOrCreateUser(ctx);
+      await ctx.db.patch(user._id, {
+        vesselSize: args.vesselSize,
+        ...(args.vesselUnit && { vesselUnit: args.vesselUnit }),
+        ...(args.dailyReadingGoal && { dailyReadingGoal: args.dailyReadingGoal }),
+        ...(args.bodyWeight && { bodyWeight: args.bodyWeight }),
+        ...(args.weightUnit && { weightUnit: args.weightUnit }),
+        ...(args.hasCompletedSetup !== undefined && { hasCompletedSetup: args.hasCompletedSetup }),
+        ...(args.privacySettings && { privacySettings: args.privacySettings }),
+      });
+      return;
+    } catch (e: any) {
+      throw new ConvexError(`DB Patch Failed: ${e.message}`);
+    }
   },
 });
 
 export const resetChallenge = mutation({
   args: {},
   handler: async (ctx) => {
-    const user = await getOrCreateUser(ctx);
-    // Overwrite the start date to right now to mathematically reset to Day 1
-    await ctx.db.patch(user._id, { 
-      lastFailedStartDate: user.challengeStartDate,
-      challengeStartDate: Date.now() 
-    });
-    return;
+    try {
+      const user = await getOrCreateUser(ctx);
+      await ctx.db.patch(user._id, { 
+        lastFailedStartDate: user.challengeStartDate,
+        challengeStartDate: Date.now() 
+      });
+      return;
+    } catch (e: any) {
+      throw new ConvexError(`Reset Failed: ${e.message}`);
+    }
   }
 });
 
 export const joinSquad = mutation({
   args: { squadId: v.string() },
   handler: async (ctx, args) => {
-    const user = await getOrCreateUser(ctx);
-    const cleanId = args.squadId.trim().toLowerCase();
-    
-    await ctx.db.patch(user._id, {
-      squadId: cleanId === "" ? undefined : cleanId
-    });
-
-    if (cleanId !== "" && cleanId !== user.squadId) {
-      await ctx.scheduler.runAfter(0, (internal as any).push.notifyPartnerAction, {
-        userId: user._id,
-        userName: user.name,
-        actionType: `Just joined the squad!`,
+    try {
+      const user = await getOrCreateUser(ctx);
+      const cleanId = args.squadId.trim().toLowerCase();
+      
+      await ctx.db.patch(user._id, {
+        squadId: cleanId === "" ? undefined : cleanId
       });
+
+      if (cleanId !== "" && cleanId !== user.squadId) {
+        await ctx.scheduler.runAfter(0, (internal as any).push.notifyPartnerAction, {
+          userId: user._id,
+          userName: user.name,
+          actionType: `Just joined the squad!`,
+        });
+      }
+      return;
+    } catch (e: any) {
+      throw new ConvexError(`JoinSquad Failed: ${e.message}`);
     }
-    
-    return;
   }
 });
 
