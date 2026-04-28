@@ -16,7 +16,6 @@ export default function SquadDirectoryDashboard() {
   const [expandedPhotoUrl, setExpandedPhotoUrl] = useState<string | null>(null);
   const [currentDay, setCurrentDay] = useState(1);
 
-  // Calculate the user's current day in the challenge for the auto-scroll feature
   useEffect(() => {
     if (me?.challengeStartDate) {
       const now = new Date();
@@ -31,10 +30,8 @@ export default function SquadDirectoryDashboard() {
     }
   }, [me]);
 
-  // The Magic Auto-Scroll Hook
   useEffect(() => {
     if (selectedUserDetailed && currentDay) {
-      // 100ms delay gives Framer Motion time to actually draw the elements before we try to scroll to them
       setTimeout(() => {
         const activeDayEl = document.getElementById(`day-block-${currentDay}`);
         if (activeDayEl) {
@@ -81,7 +78,7 @@ export default function SquadDirectoryDashboard() {
   };
 
   // ==========================================
-  // VIEW 1: SQUAD DIRECTORY (Mobile First Grid)
+  // VIEW 1: SQUAD DIRECTORY
   // ==========================================
   if (!selectedUserDetailed) {
     return (
@@ -192,6 +189,7 @@ export default function SquadDirectoryDashboard() {
   const targetLogs = selectedUserDetailed.logs || [];
   const isMe = selectedUserDetailed.isMe;
 
+  // The isMe bypass guarantees you always see your own content.
   const checkAccess = (setting: any) => {
     if (isMe) return true;
     if (setting === true || setting === "everyone" || setting === undefined) return true;
@@ -214,11 +212,24 @@ export default function SquadDirectoryDashboard() {
     const dayNum = i + 1;
     const sortedLogs = [...targetLogs].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     const log = sortedLogs[i]; 
+    
     let state = "future";
     if (log) {
+      const currentWater = ((log.waterTotal || 0) * (targetUser?.vesselSize || 1));
+      
+      // Calculate perfect day status strictly based on completion (ignoring privacy)
+      const isW1 = !!log.workout1?.done;
+      const isW2 = !!log.workout2?.done;
+      const isWater = currentWater >= waterTarget;
+      const isRead = (log.readingTotal || 0) >= readingTarget;
+      const isDiet = !!log.diet;
+      const isPhoto = !!log.photoStorageId;
+      
+      const isPerfectDay = isW1 && isW2 && isWater && isRead && isDiet && isPhoto;
+
       if (log.status === "failed") state = "failed";
-      else if (log.status === "vouch_pending") state = "pending";
-      else state = "success"; 
+      else if (isPerfectDay) state = "success";
+      else state = "pending"; 
     }
     return { dayNum, state, log };
   });
@@ -285,16 +296,22 @@ export default function SquadDirectoryDashboard() {
               const log = block.log;
               const currentWater = log ? ((log.waterTotal || 0) * (targetUser?.vesselSize || 1)) : 0;
               
-              const isW1 = log?.workout1?.done && canViewWorkouts;
-              const isW2 = log?.workout2?.done && canViewWorkouts;
-              const isWater = currentWater >= waterTarget && canViewWater;
-              const isRead = log && (log.readingTotal || 0) >= readingTarget && canViewReading;
-              const isDiet = log?.diet && canViewDiet;
-              const isPhoto = log?.photoStorageId && canViewPhotos;
+              // CRITICAL FIX: The Garmin dots map raw completion status, utterly ignoring privacy.
+              const isW1 = log?.workout1?.done;
+              const isW2 = log?.workout2?.done;
+              const isWater = currentWater >= waterTarget;
+              const isRead = log && (log.readingTotal || 0) >= readingTarget;
+              const isDiet = log?.diet;
+              const isPhoto = log?.photoStorageId;
 
               let blockBg = "bg-neutral-900/50 border-neutral-800 text-neutral-600";
-              if (block.state === "success" || block.state === "pending" || block.state === "failed") {
+              // CRITICAL FIX: Restored the beautiful green success state
+              if (block.state === "success") {
+                blockBg = "bg-gradient-to-b from-emerald-500/20 to-emerald-900/40 border-emerald-500/50 text-emerald-100 shadow-[0_0_15px_rgba(16,185,129,0.15)]"; 
+              } else if (block.state === "pending") {
                 blockBg = "bg-neutral-900 border-neutral-700 text-white hover:bg-neutral-800"; 
+              } else if (block.state === "failed") {
+                blockBg = "bg-red-950/30 border-red-900/50 text-red-500";
               }
 
               return (
