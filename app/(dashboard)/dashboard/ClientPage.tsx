@@ -4,7 +4,7 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useState, useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Camera, Settings, X, Plus, Minus, CheckCircle, Droplet, BookOpen, Users, Flame, Activity, ShieldCheck, Dumbbell, Shield, AlertTriangle } from "lucide-react";
+import { Camera, Settings, X, Plus, Minus, CheckCircle, Droplet, BookOpen, Users, Flame, Activity, ShieldCheck, Dumbbell, Shield, AlertTriangle, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { CustomDropdown } from "@/components/features/CustomDropdown";
 import { useClerk } from "@clerk/nextjs";
