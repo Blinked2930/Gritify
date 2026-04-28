@@ -133,15 +133,20 @@ function OnboardingWizard({ user }: { user: any }) {
                   <CustomDropdown options={[{label: "oz", value: "oz"}, {label: "ml", value: "ml"}, {label: "liters", value: "liters"}]} value={vesselUnitInput} onChange={(val) => setVesselUnitInput(val as any)} />
                 </div>
               </div>
-              <div className="flex gap-2">
-                <div className="flex-1">
-                  <label className="block text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-2">Weight <span className="lowercase text-neutral-600">(opt)*</span></label>
-                  <input type="number" value={bodyWeightInput} onChange={e => setBodyWeightInput(e.target.value)} className="w-full bg-neutral-950 border border-neutral-800 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500 font-mono text-sm" />
+              <div>
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <label className="block text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-2">Weight <span className="lowercase text-neutral-600">(opt)*</span></label>
+                    <input type="number" value={bodyWeightInput} onChange={e => setBodyWeightInput(e.target.value)} className="w-full bg-neutral-950 border border-neutral-800 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500 font-mono text-sm" />
+                  </div>
+                  <div className="w-1/3">
+                    <label className="block text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-2">Unit</label>
+                    <CustomDropdown options={[{label: "lbs", value: "lbs"}, {label: "kg", value: "kg"}]} value={weightUnitInput} onChange={(val) => setWeightUnitInput(val as any)} />
+                  </div>
                 </div>
-                <div className="w-1/3">
-                  <label className="block text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-2">Unit</label>
-                  <CustomDropdown options={[{label: "lbs", value: "lbs"}, {label: "kg", value: "kg"}]} value={weightUnitInput} onChange={(val) => setWeightUnitInput(val as any)} />
-                </div>
+                <p className="text-[10px] text-neutral-500 font-mono mt-2 leading-tight">
+                  *If provided, weight is only used to personalize your active calorie burn estimations.
+                </p>
               </div>
               <button onClick={() => setStep(2)} className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-black tracking-widest rounded-2xl transition-all uppercase text-xs mt-4">Next Step &rarr;</button>
             </motion.div>
@@ -171,14 +176,17 @@ function OnboardingWizard({ user }: { user: any }) {
               <div className="space-y-4">
                 {[
                   { key: "shareWorkouts", label: "Workouts" },
-                  { key: "sharePhotos", label: "Progress Photos" },
+                  { key: "shareWater", label: "Hydration" },
+                  { key: "shareReading", label: "Reading" },
+                  { key: "shareDiet", label: "Diet Status" },
+                  { key: "sharePhotos", label: "Photos" },
                 ].map((setting) => (
                   <div key={setting.key} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <span className="text-xs font-bold text-neutral-300 uppercase tracking-widest">{setting.label}</span>
-                    <div className="flex bg-neutral-950 p-1 rounded-xl border border-neutral-800 gap-1">
-                      <button onClick={() => setPrivacySettings({...privacySettings, [setting.key]: "everyone"})} className={`flex-1 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${privacySettings[setting.key as keyof typeof privacySettings] === "everyone" ? "bg-emerald-500/20 text-emerald-400" : "text-neutral-600"}`}>All</button>
-                      <button onClick={() => setPrivacySettings({...privacySettings, [setting.key]: "close_friends"})} className={`flex-1 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${privacySettings[setting.key as keyof typeof privacySettings] === "close_friends" ? "bg-emerald-500/20 text-emerald-400" : "text-neutral-600"}`}>Close</button>
-                      <button onClick={() => setPrivacySettings({...privacySettings, [setting.key]: "none"})} className={`flex-1 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${privacySettings[setting.key as keyof typeof privacySettings] === "none" ? "bg-red-500/20 text-red-400" : "text-neutral-600"}`}>None</button>
+                    <div className="flex bg-neutral-950 p-1 rounded-xl border border-neutral-800 gap-1 w-full sm:w-auto">
+                      <button onClick={() => setPrivacySettings({...privacySettings, [setting.key]: "everyone"})} className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${privacySettings[setting.key as keyof typeof privacySettings] === "everyone" ? "bg-emerald-500/20 text-emerald-400" : "text-neutral-600 hover:text-neutral-400"}`}>All</button>
+                      <button onClick={() => setPrivacySettings({...privacySettings, [setting.key]: "close_friends"})} className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${privacySettings[setting.key as keyof typeof privacySettings] === "close_friends" ? "bg-emerald-500/20 text-emerald-400" : "text-neutral-600 hover:text-neutral-400"}`}>Close</button>
+                      <button onClick={() => setPrivacySettings({...privacySettings, [setting.key]: "none"})} className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${privacySettings[setting.key as keyof typeof privacySettings] === "none" ? "bg-red-500/20 text-red-400" : "text-neutral-600 hover:text-neutral-400"}`}>None</button>
                     </div>
                   </div>
                 ))}
