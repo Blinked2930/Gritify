@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { AnimatePresence, motion } from "framer-motion";
-import { ShieldCheck, Activity, Users, Shield, ArrowLeft } from "lucide-react";
+import { ShieldCheck, Activity, Users, Shield, ArrowLeft, Loader2 } from "lucide-react";
 import { CustomDropdown } from "@/components/features/CustomDropdown";
 
 export function OnboardingWizard({ user }: { user: any }) {
@@ -12,11 +12,14 @@ export function OnboardingWizard({ user }: { user: any }) {
   const updateSettings = useMutation(api.logs.updateUserSettings);
   const joinSquad = useMutation(api.logs.joinSquad);
 
-  const [vesselSizeInput, setVesselSizeInput] = useState("128");
+  const [vesselSizeInput, setVesselSizeInput] = useState("");
   const [vesselUnitInput, setVesselUnitInput] = useState<"oz" | "ml" | "liters">("oz");
-  const [bodyWeightInput, setBodyWeightInput] = useState("160");
+  const [bodyWeightInput, setBodyWeightInput] = useState("");
   const [weightUnitInput, setWeightUnitInput] = useState<"lbs" | "kg">("lbs");
   const [squadIdInput, setSquadIdInput] = useState("");
+  
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const [privacySettings, setPrivacySettings] = useState<{
     shareWorkouts: "everyone" | "close_friends" | "none";
     shareWater: "everyone" | "close_friends" | "none";
@@ -33,20 +36,30 @@ export function OnboardingWizard({ user }: { user: any }) {
     closeFriends: []
   });
 
-  const completeSetup = async () => {
-    const parsed = parseFloat(vesselSizeInput);
-    const bwParsed = parseFloat(bodyWeightInput);
-    
-    await updateSettings({ 
-      vesselSize: isNaN(parsed) ? 128 : parsed, 
-      vesselUnit: vesselUnitInput,
-      privacySettings,
-      hasCompletedSetup: true,
-      ...(isNaN(bwParsed) ? {} : { bodyWeight: bwParsed, weightUnit: weightUnitInput })
-    });
+  const isValidVessel = vesselSizeInput.trim() !== "" && !isNaN(parseFloat(vesselSizeInput));
 
-    if (squadIdInput.trim() !== "") {
-      await joinSquad({ squadId: squadIdInput });
+  const completeSetup = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    
+    try {
+      const parsed = parseFloat(vesselSizeInput);
+      const bwParsed = parseFloat(bodyWeightInput);
+      
+      await updateSettings({ 
+        vesselSize: isNaN(parsed) ? 128 : parsed, 
+        vesselUnit: vesselUnitInput,
+        privacySettings,
+        hasCompletedSetup: true,
+        ...(isNaN(bwParsed) ? {} : { bodyWeight: bwParsed, weightUnit: weightUnitInput })
+      });
+
+      if (squadIdInput.trim() !== "") {
+        await joinSquad({ squadId: squadIdInput });
+      }
+    } catch (err) {
+      console.error("Setup failed:", err);
+      setIsSubmitting(false); // Only reset if it fails, otherwise it unmounts
     }
   };
 
@@ -77,7 +90,7 @@ export function OnboardingWizard({ user }: { user: any }) {
               <div className="flex gap-2">
                 <div className="flex-1">
                   <label className="block text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-2">Vessel Size</label>
-                  <input type="text" value={vesselSizeInput} onChange={e => setVesselSizeInput(e.target.value)} className="w-full bg-neutral-950 border border-neutral-800 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500 font-mono text-sm" />
+                  <input type="number" placeholder="e.g. 128" value={vesselSizeInput} onChange={e => setVesselSizeInput(e.target.value)} className="w-full bg-neutral-950 border border-neutral-800 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500 font-mono text-sm" />
                 </div>
                 <div className="w-1/3">
                   <label className="block text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-2">Unit</label>
@@ -87,8 +100,8 @@ export function OnboardingWizard({ user }: { user: any }) {
               <div>
                 <div className="flex gap-2">
                   <div className="flex-1">
-                    <label className="block text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-2">Weight <span className="lowercase text-neutral-600">(opt)*</span></label>
-                    <input type="number" value={bodyWeightInput} onChange={e => setBodyWeightInput(e.target.value)} className="w-full bg-neutral-950 border border-neutral-800 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500 font-mono text-sm" />
+                    <label className="block text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-2">Weight <span className="lowercase text-neutral-600">(optional)*</span></label>
+                    <input type="number" placeholder="e.g. 160" value={bodyWeightInput} onChange={e => setBodyWeightInput(e.target.value)} className="w-full bg-neutral-950 border border-neutral-800 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500 font-mono text-sm" />
                   </div>
                   <div className="w-1/3">
                     <label className="block text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-2">Unit</label>
@@ -99,7 +112,13 @@ export function OnboardingWizard({ user }: { user: any }) {
                   *If provided, weight is only used to personalize your active calorie burn estimations.
                 </p>
               </div>
-              <button onClick={() => setStep(2)} className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-black tracking-widest rounded-2xl transition-all uppercase text-xs mt-4">Next Step &rarr;</button>
+              <button 
+                onClick={() => isValidVessel && setStep(2)} 
+                disabled={!isValidVessel}
+                className={`w-full py-4 font-black tracking-widest rounded-2xl transition-all uppercase text-xs mt-4 ${isValidVessel ? "bg-emerald-500 hover:bg-emerald-400 text-neutral-950" : "bg-neutral-800 text-neutral-500 cursor-not-allowed"}`}
+              >
+                Next Step &rarr;
+              </button>
             </motion.div>
           )}
 
@@ -144,8 +163,10 @@ export function OnboardingWizard({ user }: { user: any }) {
               </div>
 
               <div className="flex gap-3 pt-6 border-t border-neutral-800">
-                <button onClick={() => setStep(2)} className="px-4 py-4 bg-neutral-800 text-white rounded-2xl hover:bg-neutral-700 transition-colors"><ArrowLeft size={18}/></button>
-                <button onClick={completeSetup} className="flex-1 py-4 bg-gradient-to-r from-emerald-400 to-emerald-600 text-emerald-950 font-black tracking-widest rounded-2xl transition-all uppercase text-xs shadow-[0_0_20px_rgba(16,185,129,0.3)]">Enter Command</button>
+                <button onClick={() => setStep(2)} disabled={isSubmitting} className="px-4 py-4 bg-neutral-800 text-white rounded-2xl hover:bg-neutral-700 transition-colors disabled:opacity-50"><ArrowLeft size={18}/></button>
+                <button onClick={completeSetup} disabled={isSubmitting} className="flex-1 py-4 bg-gradient-to-r from-emerald-400 to-emerald-600 text-emerald-950 font-black tracking-widest rounded-2xl transition-all uppercase text-xs shadow-[0_0_20px_rgba(16,185,129,0.3)] flex justify-center items-center">
+                  {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : "Enter Command"}
+                </button>
               </div>
             </motion.div>
           )}
