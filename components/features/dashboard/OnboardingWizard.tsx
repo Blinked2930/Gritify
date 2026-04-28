@@ -47,7 +47,7 @@ export function OnboardingWizard({ user }: { user: any }) {
       const bwParsed = parseFloat(bodyWeightInput);
       
       await updateSettings({ 
-        vesselSize: isNaN(parsed) ? 128 : parsed, 
+        vesselSize: isNaN(parsed) ? 40 : parsed, 
         vesselUnit: vesselUnitInput,
         privacySettings,
         hasCompletedSetup: true,
@@ -57,9 +57,12 @@ export function OnboardingWizard({ user }: { user: any }) {
       if (squadIdInput.trim() !== "") {
         await joinSquad({ squadId: squadIdInput });
       }
+
+      // Hard reload completely flushes the cache and guarantees entry to the main dashboard
+      window.location.reload();
     } catch (err) {
       console.error("Setup failed:", err);
-      setIsSubmitting(false); // Only reset if it fails, otherwise it unmounts
+      setIsSubmitting(false); 
     }
   };
 
@@ -90,7 +93,7 @@ export function OnboardingWizard({ user }: { user: any }) {
               <div className="flex gap-2">
                 <div className="flex-1">
                   <label className="block text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-2">Vessel Size</label>
-                  <input type="number" placeholder="e.g. 128" value={vesselSizeInput} onChange={e => setVesselSizeInput(e.target.value)} className="w-full bg-neutral-950 border border-neutral-800 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500 font-mono text-sm" />
+                  <input type="number" placeholder="e.g. 40" value={vesselSizeInput} onChange={e => setVesselSizeInput(e.target.value)} className="w-full bg-neutral-950 border border-neutral-800 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500 font-mono text-sm" />
                 </div>
                 <div className="w-1/3">
                   <label className="block text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-2">Unit</label>
