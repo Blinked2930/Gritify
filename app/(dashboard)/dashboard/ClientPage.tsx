@@ -103,7 +103,6 @@ function DashboardMain({ user }: { user: any }) {
     if (user?.squadId) setSquadIdInput(user.squadId);
     
     if (user?.privacySettings) {
-      // Map legacy booleans dynamically to prevent crash
       const mapLegacy = (val: any) => val === true ? "everyone" : val === false ? "none" : (val || "everyone");
       setPrivacySettings({
         shareWorkouts: mapLegacy(user.privacySettings.shareWorkouts),
@@ -232,7 +231,7 @@ function DashboardMain({ user }: { user: any }) {
           </div>
         </div>
 
-        {/* WORKOUT 1 */}
+        {/* WORKOUT 1: OUTDOOR */}
         <div className={`p-5 rounded-[24px] border backdrop-blur-md transition-all ${isW1Met ? 'bg-emerald-500/5 border-emerald-500/30' : 'bg-neutral-900/40 border-neutral-800'}`}>
           <div className="flex justify-between items-start mb-4">
             <div>
@@ -258,7 +257,7 @@ function DashboardMain({ user }: { user: any }) {
           </button>
         </div>
 
-        {/* WORKOUT 2 */}
+        {/* WORKOUT 2: INDOOR */}
         <div className={`p-5 rounded-[24px] border backdrop-blur-md transition-all ${isW2Met ? 'bg-emerald-500/5 border-emerald-500/30' : 'bg-neutral-900/40 border-neutral-800'}`}>
           <div className="flex justify-between items-start mb-4">
             <div>
@@ -377,7 +376,8 @@ function DashboardMain({ user }: { user: any }) {
               Diet Perfect
             </button>
             
-            <input type="file" accept="image/*" capture="user" ref={fileInputRef} className="hidden" onChange={handlePhotoUpload} />
+            {/* Removed capture="user" so the OS prompts for Camera OR Gallery */}
+            <input type="file" accept="image/*" ref={fileInputRef} className="hidden" onChange={handlePhotoUpload} />
             <button 
               onClick={() => fileInputRef.current?.click()}
               disabled={isPhotoUploading}
@@ -449,6 +449,10 @@ function DashboardMain({ user }: { user: any }) {
                         <CustomDropdown options={[{label: "lbs", value: "lbs"}, {label: "kg", value: "kg"}]} value={weightUnitInput} onChange={(val) => setWeightUnitInput(val as any)} />
                       </div>
                     </div>
+                    {/* RESTORED DISCLAIMER */}
+                    <p className="text-[10px] text-neutral-500 font-mono mt-2 leading-tight">
+                      *If provided, weight is only used to personalize your active calorie burn estimations.
+                    </p>
                   </div>
                 </motion.div>
               )}
