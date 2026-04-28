@@ -4,7 +4,7 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { ArrowLeft, Flame, Droplet, BookOpen, Activity, Loader2, Utensils, ShieldAlert, User, CheckCircle, Camera, X } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
 export default function SquadDirectoryDashboard() {
@@ -14,6 +14,35 @@ export default function SquadDirectoryDashboard() {
   const [selectedUserDetailed, setSelectedUserDetailed] = useState<any | null>(null);
   const [selectedLogDay, setSelectedLogDay] = useState<any | null>(null);
   const [expandedPhotoUrl, setExpandedPhotoUrl] = useState<string | null>(null);
+  const [currentDay, setCurrentDay] = useState(1);
+
+  // Calculate the user's current day in the challenge for the auto-scroll feature
+  useEffect(() => {
+    if (me?.challengeStartDate) {
+      const now = new Date();
+      now.setHours(now.getHours() - 2);
+      const start = new Date(me.challengeStartDate);
+      start.setHours(start.getHours() - 2);
+      start.setHours(0,0,0,0);
+      const todayObj = new Date(now);
+      todayObj.setHours(0,0,0,0);
+      const diffTime = Math.abs(todayObj.getTime() - start.getTime());
+      setCurrentDay(Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1);
+    }
+  }, [me]);
+
+  // The Magic Auto-Scroll Hook
+  useEffect(() => {
+    if (selectedUserDetailed && currentDay) {
+      // 100ms delay gives Framer Motion time to actually draw the elements before we try to scroll to them
+      setTimeout(() => {
+        const activeDayEl = document.getElementById(`day-block-${currentDay}`);
+        if (activeDayEl) {
+          activeDayEl.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+        }
+      }, 100);
+    }
+  }, [selectedUserDetailed, currentDay]);
 
   if (data === undefined || me === undefined) {
     return (
@@ -163,7 +192,6 @@ export default function SquadDirectoryDashboard() {
   const targetLogs = selectedUserDetailed.logs || [];
   const isMe = selectedUserDetailed.isMe;
 
-  // NEW PRIVACY LOGIC: Decode unions to handle "close_friends" and legacy booleans
   const checkAccess = (setting: any) => {
     if (isMe) return true;
     if (setting === true || setting === "everyone" || setting === undefined) return true;
@@ -272,6 +300,7 @@ export default function SquadDirectoryDashboard() {
               return (
                 <motion.button 
                   key={block.dayNum} 
+                  id={`day-block-${block.dayNum}`}
                   initial={idx < 15 ? { opacity: 0, scale: 0.8 } : false}
                   animate={idx < 15 ? { opacity: 1, scale: 1 } : false}
                   transition={{ delay: idx * 0.02 }}
@@ -366,7 +395,7 @@ export default function SquadDirectoryDashboard() {
                 <div className="bg-neutral-950 border border-neutral-800 p-4 rounded-xl relative overflow-hidden group">
                   <div className="flex justify-between items-center mb-2">
                     <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest flex items-center"><Flame size={12} className="text-orange-500 mr-2"/> Outdoor</p>
-                    {selectedLogDay?.workout1?.done ? <CheckCircle size={14} className="text-emerald-500" /> : <X size={14} className="text-neutral-600" />}
+                    {selectedLogDay?.workout1?.done ? <CheckCircle size={14} className="text-emerald-500" /> : <div className="w-3.5 h-3.5 rounded-full border border-dashed border-neutral-700" />}
                   </div>
                   {canViewWorkouts ? (
                     <>
@@ -384,7 +413,7 @@ export default function SquadDirectoryDashboard() {
                 <div className="bg-neutral-950 border border-neutral-800 p-4 rounded-xl relative overflow-hidden group">
                   <div className="flex justify-between items-center mb-2">
                     <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest flex items-center"><Activity size={12} className="text-violet-500 mr-2"/> Indoor</p>
-                    {selectedLogDay?.workout2?.done ? <CheckCircle size={14} className="text-emerald-500" /> : <X size={14} className="text-neutral-600" />}
+                    {selectedLogDay?.workout2?.done ? <CheckCircle size={14} className="text-emerald-500" /> : <div className="w-3.5 h-3.5 rounded-full border border-dashed border-neutral-700" />}
                   </div>
                   {canViewWorkouts ? (
                     <>
@@ -402,7 +431,7 @@ export default function SquadDirectoryDashboard() {
                 <div className="bg-neutral-950 border border-neutral-800 p-4 rounded-xl relative overflow-hidden group">
                   <div className="flex justify-between items-center mb-2">
                     <p className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest flex items-center"><Camera size={12} className="text-emerald-500 mr-2"/> Progress Photo</p>
-                    {selectedLogDay?.photoStorageId ? <CheckCircle size={14} className="text-emerald-500" /> : <X size={14} className="text-neutral-600" />}
+                    {selectedLogDay?.photoStorageId ? <CheckCircle size={14} className="text-emerald-500" /> : <div className="w-3.5 h-3.5 rounded-full border border-dashed border-neutral-700" />}
                   </div>
                   
                   {selectedLogDay?.photoStorageId && (
