@@ -1,6 +1,9 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
+// CRITICAL FIX: The database now legally accepts our new dropdown values
+const PrivacyLevel = v.union(v.literal("everyone"), v.literal("close_friends"), v.literal("none"), v.boolean());
+
 export default defineSchema({
   users: defineTable({
     clerkId: v.string(),
@@ -20,11 +23,12 @@ export default defineSchema({
     squadId: v.optional(v.string()), 
     privacySettings: v.optional(
       v.object({
-        shareWorkouts: v.boolean(),
-        shareWater: v.boolean(),
-        shareReading: v.boolean(),
-        shareDiet: v.boolean(),
-        sharePhotos: v.boolean()
+        shareWorkouts: PrivacyLevel,
+        shareWater: PrivacyLevel,
+        shareReading: PrivacyLevel,
+        shareDiet: PrivacyLevel,
+        sharePhotos: PrivacyLevel,
+        closeFriends: v.optional(v.array(v.string()))
       })
     ),
   })

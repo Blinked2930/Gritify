@@ -163,11 +163,21 @@ export default function SquadDirectoryDashboard() {
   const targetLogs = selectedUserDetailed.logs || [];
   const isMe = selectedUserDetailed.isMe;
 
-  const canViewWorkouts = isMe || targetUser.privacySettings?.shareWorkouts !== false;
-  const canViewWater = isMe || targetUser.privacySettings?.shareWater !== false;
-  const canViewReading = isMe || targetUser.privacySettings?.shareReading !== false;
-  const canViewDiet = isMe || targetUser.privacySettings?.shareDiet !== false;
-  const canViewPhotos = isMe || targetUser.privacySettings?.sharePhotos !== false;
+  // NEW PRIVACY LOGIC: Decode unions to handle "close_friends" and legacy booleans
+  const checkAccess = (setting: any) => {
+    if (isMe) return true;
+    if (setting === true || setting === "everyone" || setting === undefined) return true;
+    if (setting === "close_friends") {
+      return targetUser.privacySettings?.closeFriends?.includes(me._id as string) || false;
+    }
+    return false;
+  };
+
+  const canViewWorkouts = checkAccess(targetUser.privacySettings?.shareWorkouts);
+  const canViewWater = checkAccess(targetUser.privacySettings?.shareWater);
+  const canViewReading = checkAccess(targetUser.privacySettings?.shareReading);
+  const canViewDiet = checkAccess(targetUser.privacySettings?.shareDiet);
+  const canViewPhotos = checkAccess(targetUser.privacySettings?.sharePhotos);
 
   const waterTarget = targetUser?.vesselUnit === "liters" ? 3.78 : targetUser?.vesselUnit === "ml" ? 3785 : 128;
   const readingTarget = targetUser?.dailyReadingGoal || 10;
@@ -244,7 +254,6 @@ export default function SquadDirectoryDashboard() {
         <div className="pt-2">
           <div className="flex overflow-x-auto snap-x snap-mandatory gap-3 sm:gap-4 select-none bg-neutral-900/20 p-5 rounded-3xl border border-neutral-800/30 backdrop-blur-xl pb-5 hide-scrollbar relative">
             {calendarBlocks.map((block, idx) => {
-              // Garmin Style Stacked Bars logic
               const log = block.log;
               const currentWater = log ? ((log.waterTotal || 0) * (targetUser?.vesselSize || 1)) : 0;
               
@@ -255,9 +264,9 @@ export default function SquadDirectoryDashboard() {
               const isDiet = log?.diet && canViewDiet;
               const isPhoto = log?.photoStorageId && canViewPhotos;
 
-              let blockBg = "bg-neutral-900/50 border-neutral-800 text-neutral-600"; // Future state
+              let blockBg = "bg-neutral-900/50 border-neutral-800 text-neutral-600";
               if (block.state === "success" || block.state === "pending" || block.state === "failed") {
-                blockBg = "bg-neutral-900 border-neutral-700 text-white hover:bg-neutral-800"; // Has active log
+                blockBg = "bg-neutral-900 border-neutral-700 text-white hover:bg-neutral-800"; 
               }
 
               return (
@@ -272,7 +281,6 @@ export default function SquadDirectoryDashboard() {
                 >
                   <span className="relative z-20 mb-1">{block.dayNum}</span>
                   
-                  {/* The Garmin Segments */}
                   {block.state !== "future" && (
                     <div className="absolute bottom-1.5 left-1.5 right-1.5 flex gap-[2px] h-1.5">
                       <div className={`flex-1 rounded-sm transition-colors ${isW1 ? 'bg-orange-500' : 'bg-neutral-800/80'}`} />
@@ -289,7 +297,6 @@ export default function SquadDirectoryDashboard() {
             <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-neutral-900/60 to-transparent pointer-events-none rounded-r-3xl" />
           </div>
           
-          {/* Calendar Legend */}
           <div className="flex justify-between px-2 mt-3">
              <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-orange-500"></div><span className="text-[8px] uppercase tracking-widest text-neutral-500 font-bold">W1</span></div>
              <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-violet-500"></div><span className="text-[8px] uppercase tracking-widest text-neutral-500 font-bold">W2</span></div>

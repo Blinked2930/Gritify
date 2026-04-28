@@ -53,6 +53,8 @@ function DashboardMain({ user }: { user: any }) {
   const { signOut } = useClerk();
   
   const log = useQuery(api.logs.getTodayLog);
+  const squadMembers = useQuery(api.logs.getSquadMembers) || [];
+  
   const updateLog = useMutation(api.logs.updateLog);
   const updateSettings = useMutation(api.logs.updateUserSettings);
   const joinSquad = useMutation(api.logs.joinSquad);
@@ -62,18 +64,28 @@ function DashboardMain({ user }: { user: any }) {
   const [reflectionA, setReflectionA] = useState("");
   
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<"general" | "privacy">("general");
+
   const [vesselSizeInput, setVesselSizeInput] = useState("128");
   const [vesselUnitInput, setVesselUnitInput] = useState<"oz" | "ml" | "liters">("oz");
   const [bodyWeightInput, setBodyWeightInput] = useState("160");
   const [weightUnitInput, setWeightUnitInput] = useState<"lbs" | "kg">("lbs");
   const [squadIdInput, setSquadIdInput] = useState("");
   
-  const [privacySettings, setPrivacySettings] = useState({
-    shareWorkouts: true,
-    shareWater: true,
-    shareReading: true,
-    shareDiet: true,
-    sharePhotos: false,
+  const [privacySettings, setPrivacySettings] = useState<{
+    shareWorkouts: "everyone" | "close_friends" | "none";
+    shareWater: "everyone" | "close_friends" | "none";
+    shareReading: "everyone" | "close_friends" | "none";
+    shareDiet: "everyone" | "close_friends" | "none";
+    sharePhotos: "everyone" | "close_friends" | "none";
+    closeFriends: string[];
+  }>({
+    shareWorkouts: "everyone",
+    shareWater: "everyone",
+    shareReading: "everyone",
+    shareDiet: "everyone",
+    sharePhotos: "close_friends",
+    closeFriends: []
   });
   
   const [isPhotoUploading, setIsPhotoUploading] = useState(false);
@@ -88,8 +100,20 @@ function DashboardMain({ user }: { user: any }) {
     if (user?.vesselUnit) setVesselUnitInput(user.vesselUnit as any);
     if (user?.bodyWeight) setBodyWeightInput(user.bodyWeight.toString());
     if (user?.weightUnit) setWeightUnitInput(user.weightUnit as any);
-    if (user?.privacySettings) setPrivacySettings(user.privacySettings);
     if (user?.squadId) setSquadIdInput(user.squadId);
+    
+    if (user?.privacySettings) {
+      // Map legacy booleans dynamically to prevent crash
+      const mapLegacy = (val: any) => val === true ? "everyone" : val === false ? "none" : (val || "everyone");
+      setPrivacySettings({
+        shareWorkouts: mapLegacy(user.privacySettings.shareWorkouts),
+        shareWater: mapLegacy(user.privacySettings.shareWater),
+        shareReading: mapLegacy(user.privacySettings.shareReading),
+        shareDiet: mapLegacy(user.privacySettings.shareDiet),
+        sharePhotos: mapLegacy(user.privacySettings.sharePhotos),
+        closeFriends: user.privacySettings.closeFriends || []
+      });
+    }
     
     if (log?.qAndA && log.qAndA.length > 0) {
       setReflectionA(log.qAndA[0].answer);
@@ -177,7 +201,7 @@ function DashboardMain({ user }: { user: any }) {
   const currentWaterAmountStr = log ? ((log?.waterTotal || 0) * (user?.vesselSize || 128)) : 0;
   const waterTarget = user?.vesselUnit === "liters" ? 3.78 : user?.vesselUnit === "ml" ? 3785 : 128;
   const isWaterMet = currentWaterAmountStr >= waterTarget;
-  const readingGoal = user?.dailyReadingGoal || 10; // Derived the reading goal variable
+  const readingGoal = user?.dailyReadingGoal || 10; 
   const isPagesMet = log ? (log?.readingTotal || 0) >= readingGoal : false;
   const isW1Met = log?.workout1?.done;
   const isW2Met = log?.workout2?.done;
@@ -208,7 +232,7 @@ function DashboardMain({ user }: { user: any }) {
           </div>
         </div>
 
-        {/* WORKOUT 1: OUTDOOR */}
+        {/* WORKOUT 1 */}
         <div className={`p-5 rounded-[24px] border backdrop-blur-md transition-all ${isW1Met ? 'bg-emerald-500/5 border-emerald-500/30' : 'bg-neutral-900/40 border-neutral-800'}`}>
           <div className="flex justify-between items-start mb-4">
             <div>
@@ -234,7 +258,7 @@ function DashboardMain({ user }: { user: any }) {
           </button>
         </div>
 
-        {/* WORKOUT 2: INDOOR */}
+        {/* WORKOUT 2 */}
         <div className={`p-5 rounded-[24px] border backdrop-blur-md transition-all ${isW2Met ? 'bg-emerald-500/5 border-emerald-500/30' : 'bg-neutral-900/40 border-neutral-800'}`}>
           <div className="flex justify-between items-start mb-4">
             <div>
@@ -312,7 +336,6 @@ function DashboardMain({ user }: { user: any }) {
               <span className="text-sm font-bold text-neutral-500 mb-1">/ {readingGoal}</span>
             </div>
             <form onSubmit={handleAddPages} className="flex gap-2 w-1/2">
-              {/* CRITICAL FIX: Add defaultValue so user doesn't have to type 10 manually */}
               <input 
                 type="number" 
                 name="pages" 
@@ -382,100 +405,138 @@ function DashboardMain({ user }: { user: any }) {
         {settingsOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/90 backdrop-blur-sm" onClick={() => setSettingsOpen(false)} />
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-neutral-900 border border-neutral-800 p-6 rounded-3xl shadow-2xl relative z-10 w-full max-w-sm max-h-[90vh] overflow-y-auto hide-scrollbar">
-              <h2 className="text-xl font-black text-white mb-6 uppercase tracking-tight">Command Settings</h2>
-              <div className="space-y-6">
-                <div className="space-y-4">
-                  <h3 className="text-xs font-bold text-emerald-500 uppercase tracking-widest border-b border-neutral-800 pb-2 flex items-center gap-2"><Users size={14} /> Squad Network</h3>
-                  <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest mb-4">Enter a shared ID to link your dashboard.</p>
-                  <div>
-                    <input 
-                      type="text" 
-                      placeholder="e.g. alpha-squad"
-                      value={squadIdInput} 
-                      onChange={e => setSquadIdInput(e.target.value)} 
-                      className="w-full bg-neutral-950 border border-neutral-800 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500 font-mono text-sm" 
-                    />
-                  </div>
-                </div>
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-neutral-900 border border-neutral-800 p-6 rounded-3xl shadow-2xl relative z-10 w-full max-w-sm max-h-[90vh] overflow-y-auto hide-scrollbar flex flex-col">
+              
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-black text-white uppercase tracking-tight">Command Settings</h2>
+                <button onClick={() => setSettingsOpen(false)} className="text-neutral-500 hover:text-white"><X size={20}/></button>
+              </div>
 
-                <div className="space-y-4 pt-4 border-t border-neutral-800">
-                  <h3 className="text-xs font-bold text-emerald-500 uppercase tracking-widest border-b border-neutral-800 pb-2">Body Metrics</h3>
-                  <div className="flex gap-2">
-                    <div className="flex-1">
-                      <label className="block text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-2">Vessel Size</label>
-                      <input type="text" value={vesselSizeInput} onChange={e => setVesselSizeInput(e.target.value)} className="w-full bg-neutral-950 border border-neutral-800 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500 font-mono text-sm" />
-                    </div>
-                    <div className="w-1/3">
-                      <label className="block text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-2">Unit</label>
-                      <CustomDropdown options={[{label: "oz", value: "oz"}, {label: "ml", value: "ml"}, {label: "liters", value: "liters"}]} value={vesselUnitInput} onChange={(val) => setVesselUnitInput(val as any)} />
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <div className="flex-1">
-                      <label className="block text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-2">Weight <span className="lowercase text-neutral-600">(opt)*</span></label>
-                      <input type="number" value={bodyWeightInput} onChange={e => setBodyWeightInput(e.target.value)} className="w-full bg-neutral-950 border border-neutral-800 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500 font-mono text-sm" />
-                    </div>
-                    <div className="w-1/3">
-                      <label className="block text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-2">Unit</label>
-                      <CustomDropdown options={[{label: "lbs", value: "lbs"}, {label: "kg", value: "kg"}]} value={weightUnitInput} onChange={(val) => setWeightUnitInput(val as any)} />
-                    </div>
-                  </div>
-                </div>
+              {/* TABS */}
+              <div className="flex gap-2 mb-6 bg-neutral-950 p-1 rounded-2xl border border-neutral-800">
+                <button onClick={() => setActiveTab("general")} className={`flex-1 py-2 text-xs font-bold uppercase tracking-widest rounded-xl transition-all ${activeTab === "general" ? "bg-neutral-800 text-white" : "text-neutral-500 hover:text-neutral-300"}`}>General</button>
+                <button onClick={() => setActiveTab("privacy")} className={`flex-1 py-2 text-xs font-bold uppercase tracking-widest rounded-xl transition-all ${activeTab === "privacy" ? "bg-emerald-500 text-neutral-950" : "text-neutral-500 hover:text-neutral-300"}`}>Privacy</button>
+              </div>
 
-                <div className="space-y-4 pt-4 border-t border-neutral-800">
-                  <h3 className="text-xs font-bold text-emerald-500 uppercase tracking-widest border-b border-neutral-800 pb-2 flex items-center gap-2"><Shield size={14} /> Squad Privacy</h3>
-                  {[
-                    { key: "shareWorkouts", label: "Share Workouts" },
-                    { key: "shareWater", label: "Share Hydration" },
-                    { key: "shareReading", label: "Share Reading" },
-                    { key: "shareDiet", label: "Share Diet Status" },
-                    { key: "sharePhotos", label: "Share Photos" },
-                  ].map((setting) => (
-                    <label key={setting.key} className="flex items-center justify-between cursor-pointer group">
-                      <span className="text-xs font-bold text-neutral-300 uppercase tracking-widest group-hover:text-white transition-colors">{setting.label}</span>
-                      <div className={`w-10 h-6 rounded-full p-1 transition-colors ${privacySettings[setting.key as keyof typeof privacySettings] ? 'bg-emerald-500' : 'bg-neutral-800'}`}>
-                        <div className={`w-4 h-4 bg-white rounded-full transition-transform ${privacySettings[setting.key as keyof typeof privacySettings] ? 'translate-x-4' : 'translate-x-0'}`} />
+              {/* GENERAL TAB */}
+              {activeTab === "general" && (
+                <motion.div initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
+                  <div className="space-y-4">
+                    <h3 className="text-xs font-bold text-emerald-500 uppercase tracking-widest border-b border-neutral-800 pb-2 flex items-center gap-2"><Users size={14} /> Squad Network</h3>
+                    <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest mb-4">Enter a shared ID to link your dashboard.</p>
+                    <input type="text" placeholder="e.g. alpha-squad" value={squadIdInput} onChange={e => setSquadIdInput(e.target.value)} className="w-full bg-neutral-950 border border-neutral-800 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500 font-mono text-sm" />
+                  </div>
+
+                  <div className="space-y-4 pt-4 border-t border-neutral-800">
+                    <h3 className="text-xs font-bold text-emerald-500 uppercase tracking-widest border-b border-neutral-800 pb-2">Body Metrics</h3>
+                    <div className="flex gap-2">
+                      <div className="flex-1">
+                        <label className="block text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-2">Vessel Size</label>
+                        <input type="text" value={vesselSizeInput} onChange={e => setVesselSizeInput(e.target.value)} className="w-full bg-neutral-950 border border-neutral-800 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500 font-mono text-sm" />
                       </div>
-                      <input 
-                        type="checkbox" 
-                        className="hidden" 
-                        checked={privacySettings[setting.key as keyof typeof privacySettings]}
-                        onChange={(e) => setPrivacySettings({...privacySettings, [setting.key]: e.target.checked})}
-                      />
-                    </label>
-                  ))}
-                </div>
+                      <div className="w-1/3">
+                        <label className="block text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-2">Unit</label>
+                        <CustomDropdown options={[{label: "oz", value: "oz"}, {label: "ml", value: "ml"}, {label: "liters", value: "liters"}]} value={vesselUnitInput} onChange={(val) => setVesselUnitInput(val as any)} />
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <div className="flex-1">
+                        <label className="block text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-2">Weight <span className="lowercase text-neutral-600">(opt)*</span></label>
+                        <input type="number" value={bodyWeightInput} onChange={e => setBodyWeightInput(e.target.value)} className="w-full bg-neutral-950 border border-neutral-800 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500 font-mono text-sm" />
+                      </div>
+                      <div className="w-1/3">
+                        <label className="block text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-2">Unit</label>
+                        <CustomDropdown options={[{label: "lbs", value: "lbs"}, {label: "kg", value: "kg"}]} value={weightUnitInput} onChange={(val) => setWeightUnitInput(val as any)} />
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
 
-                <div className="pt-4">
-                  <button 
-                    onClick={() => {
-                      const parsed = parseFloat(vesselSizeInput);
-                      const bwParsed = parseFloat(bodyWeightInput);
-                      if (!isNaN(parsed) && parsed > 0) {
-                        updateSettings({ 
-                          vesselSize: parsed, 
-                          vesselUnit: vesselUnitInput,
-                          privacySettings,
-                          ...(isNaN(bwParsed) ? {} : { bodyWeight: bwParsed, weightUnit: weightUnitInput })
-                        });
-                      }
-                      if (squadIdInput !== (user?.squadId || "")) {
-                        joinSquad({ squadId: squadIdInput });
-                      }
-                      setSettingsOpen(false);
-                    }}
-                    className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-black tracking-widest rounded-2xl transition-all uppercase text-[11px] shadow-[0_0_20px_rgba(16,185,129,0.2)]"
-                  >
-                    Confirm Changes
-                  </button>
-                  <button 
-                    onClick={() => signOut({ redirectUrl: '/' })}
-                    className="w-full py-4 bg-transparent border border-red-500/30 hover:bg-red-500/10 text-red-500 font-black tracking-widest rounded-2xl transition-all mt-3 uppercase text-[11px]"
-                  >
-                    Log Out
-                  </button>
-                </div>
+              {/* PRIVACY TAB */}
+              {activeTab === "privacy" && (
+                <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="space-y-5">
+                  <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest mb-2">Set your broadcast limits per category.</p>
+                  
+                  {[
+                    { key: "shareWorkouts", label: "Workouts" },
+                    { key: "shareWater", label: "Hydration" },
+                    { key: "shareReading", label: "Reading" },
+                    { key: "shareDiet", label: "Diet Status" },
+                    { key: "sharePhotos", label: "Photos" },
+                  ].map((setting) => (
+                    <div key={setting.key} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <span className="text-xs font-bold text-neutral-300 uppercase tracking-widest">{setting.label}</span>
+                      <div className="flex bg-neutral-950 p-1 rounded-xl border border-neutral-800 gap-1 w-full sm:w-auto">
+                        <button onClick={() => setPrivacySettings({...privacySettings, [setting.key]: "everyone"})} className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${privacySettings[setting.key as keyof typeof privacySettings] === "everyone" ? "bg-emerald-500/20 text-emerald-400" : "text-neutral-600 hover:text-neutral-400"}`}>All</button>
+                        <button onClick={() => setPrivacySettings({...privacySettings, [setting.key]: "close_friends"})} className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${privacySettings[setting.key as keyof typeof privacySettings] === "close_friends" ? "bg-emerald-500/20 text-emerald-400" : "text-neutral-600 hover:text-neutral-400"}`}>Close</button>
+                        <button onClick={() => setPrivacySettings({...privacySettings, [setting.key]: "none"})} className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${privacySettings[setting.key as keyof typeof privacySettings] === "none" ? "bg-red-500/20 text-red-400" : "text-neutral-600 hover:text-neutral-400"}`}>None</button>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* INSTAGRAM CLOSE FRIENDS DROPDOWN */}
+                  <AnimatePresence>
+                    {Object.values(privacySettings).includes("close_friends") && (
+                      <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="pt-6 border-t border-neutral-800 mt-6">
+                        <h3 className="text-xs font-bold text-emerald-500 uppercase tracking-widest mb-3 flex items-center gap-2"><Users size={14}/> Close Friends List</h3>
+                        {squadMembers.length === 0 ? (
+                          <p className="text-[10px] text-neutral-500 font-mono">No one else is in your squad yet.</p>
+                        ) : (
+                          <div className="space-y-2 max-h-48 overflow-y-auto hide-scrollbar">
+                            {squadMembers.map(member => {
+                              const isClose = privacySettings.closeFriends.includes(member._id);
+                              return (
+                                <label key={member._id} className="flex items-center justify-between p-3 rounded-2xl border border-neutral-800 bg-neutral-900/50 cursor-pointer active:scale-[0.98] transition-all">
+                                  <span className="text-xs font-bold text-white uppercase tracking-widest">{member.name}</span>
+                                  <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-all ${isClose ? "bg-emerald-500 border-emerald-500" : "border-neutral-600"}`}>
+                                    {isClose && <CheckCircle size={12} className="text-neutral-950" />}
+                                  </div>
+                                  <input type="checkbox" className="hidden" checked={isClose} onChange={(e) => {
+                                    const newFriends = e.target.checked 
+                                      ? [...privacySettings.closeFriends, member._id]
+                                      : privacySettings.closeFriends.filter(id => id !== member._id);
+                                    setPrivacySettings({...privacySettings, closeFriends: newFriends});
+                                  }}/>
+                                </label>
+                              )
+                            })}
+                          </div>
+                        )}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
+              )}
+
+              <div className="pt-6 mt-auto">
+                <button 
+                  onClick={() => {
+                    const parsed = parseFloat(vesselSizeInput);
+                    const bwParsed = parseFloat(bodyWeightInput);
+                    if (!isNaN(parsed) && parsed > 0) {
+                      updateSettings({ 
+                        vesselSize: parsed, 
+                        vesselUnit: vesselUnitInput,
+                        privacySettings,
+                        ...(isNaN(bwParsed) ? {} : { bodyWeight: bwParsed, weightUnit: weightUnitInput })
+                      });
+                    }
+                    if (squadIdInput !== (user?.squadId || "")) {
+                      joinSquad({ squadId: squadIdInput });
+                    }
+                    setSettingsOpen(false);
+                  }}
+                  className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-black tracking-widest rounded-2xl transition-all uppercase text-[11px] shadow-[0_0_20px_rgba(16,185,129,0.2)]"
+                >
+                  Save Settings
+                </button>
+                <button 
+                  onClick={() => signOut({ redirectUrl: '/' })}
+                  className="w-full py-4 bg-transparent border border-red-500/30 hover:bg-red-500/10 text-red-500 font-black tracking-widest rounded-2xl transition-all mt-3 uppercase text-[11px]"
+                >
+                  Log Out
+                </button>
               </div>
             </motion.div>
           </div>

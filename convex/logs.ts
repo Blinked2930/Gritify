@@ -89,9 +89,30 @@ export const getMe = query({
   },
 });
 
+// NEW QUERY: Fetch squad members for the Close Friends multiselect dropdown
+export const getSquadMembers = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getUser(ctx);
+    if (!user || !user.squadId) return [];
+
+    const membersRaw = await ctx.db
+      .query("users")
+      .withIndex("by_squad", (q) => q.eq("squadId", user.squadId as string))
+      .collect();
+
+    return membersRaw
+      .filter(m => m._id !== user._id)
+      .map(m => ({ _id: m._id, name: m.name }));
+  }
+});
+
 export const generateUploadUrl = mutation(async (ctx) => {
   return await ctx.storage.generateUploadUrl();
 });
+
+// CRITICAL FIX: Allow the new complex strings or legacy booleans to prevent migration crashes
+const PrivacyLevel = v.union(v.literal("everyone"), v.literal("close_friends"), v.literal("none"), v.boolean());
 
 export const updateUserSettings = mutation({
   args: { 
@@ -101,11 +122,12 @@ export const updateUserSettings = mutation({
     bodyWeight: v.optional(v.number()),
     weightUnit: v.optional(v.union(v.literal("lbs"), v.literal("kg"))),
     privacySettings: v.optional(v.object({
-      shareWorkouts: v.boolean(),
-      shareWater: v.boolean(),
-      shareReading: v.boolean(),
-      shareDiet: v.boolean(),
-      sharePhotos: v.boolean()
+      shareWorkouts: PrivacyLevel,
+      shareWater: PrivacyLevel,
+      shareReading: PrivacyLevel,
+      shareDiet: PrivacyLevel,
+      sharePhotos: PrivacyLevel,
+      closeFriends: v.optional(v.array(v.string()))
     }))
   },
   handler: async (ctx, args) => {
@@ -131,7 +153,6 @@ export const joinSquad = mutation({
       squadId: cleanId === "" ? undefined : cleanId
     });
 
-    // Notify the squad that someone just joined using the known user object
     if (cleanId !== "" && cleanId !== user.squadId) {
       await ctx.scheduler.runAfter(0, (internal as any).push.notifyPartnerAction, {
         userId: user._id,
@@ -202,7 +223,6 @@ export const updateLog = mutation({
       logId = existingLog._id;
     }
 
-    // Determine what action was taken to formulate the push notification message
     let actionType = "Updated their log";
     if (args.workout1 !== undefined || args.workout1Done !== undefined) actionType = "Logged an Outdoor Workout";
     else if (args.workout2 !== undefined || args.workout2Done !== undefined) actionType = "Logged an Indoor Workout";
@@ -211,7 +231,6 @@ export const updateLog = mutation({
     else if (args.waterTotal !== undefined) actionType = "Logged Hydration";
     else if (args.diet !== undefined) actionType = args.diet ? "Locked in the Diet" : "Slipped on the Diet";
     
-    // Only attempt to send a push notification if the user is actually in a squad
     if (user.squadId) {
       await ctx.scheduler.runAfter(0, (internal as any).push.notifyPartnerAction, {
         userId: user._id,
@@ -246,7 +265,6 @@ export const getGlobalAggregates = query({
       return { totalWater, totalPages, totalCals, workoutCount };
     };
 
-    // Helper to fetch urls for an array of logs
     const attachUrlsToLogs = async (logs: any[]) => {
       return await Promise.all(logs.map(async (l) => {
         let photoUrl = null;
