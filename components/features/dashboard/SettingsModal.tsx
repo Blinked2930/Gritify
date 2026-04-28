@@ -15,9 +15,11 @@ export function SettingsModal({ user, onClose }: { user: any, onClose: () => voi
   const updateSettings = useMutation(api.logs.updateUserSettings);
   const joinSquad = useMutation(api.logs.joinSquad);
   const resetChallenge = useMutation(api.logs.resetChallenge);
+  const adminResetSquad = useMutation(api.logs.adminResetSquad);
 
   const [activeTab, setActiveTab] = useState<"general" | "privacy">("general");
   const [isResetConfirming, setIsResetConfirming] = useState(false);
+  const [isSquadResetConfirming, setIsSquadResetConfirming] = useState(false);
 
   const [vesselSizeInput, setVesselSizeInput] = useState("128");
   const [vesselUnitInput, setVesselUnitInput] = useState<"oz" | "ml" | "liters">("oz");
@@ -130,11 +132,11 @@ export function SettingsModal({ user, onClose }: { user: any, onClose: () => voi
               </p>
             </div>
             
-            <div className="pt-6 border-t border-red-500/20 mt-6">
+            <div className="pt-6 border-t border-red-500/20 mt-6 space-y-3">
               {isResetConfirming ? (
                 <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-4 text-center">
                   <AlertTriangle className="w-6 h-6 text-red-500 mx-auto mb-2" />
-                  <p className="text-[10px] text-red-400 uppercase tracking-widest font-bold mb-3">This will permanently revert your progress to Day 1. Are you sure?</p>
+                  <p className="text-[10px] text-red-400 uppercase tracking-widest font-bold mb-3">This will reset YOUR progress to Day 1. Are you sure?</p>
                   <div className="flex gap-2">
                     <button onClick={() => setIsResetConfirming(false)} className="flex-1 py-3 bg-neutral-800 text-white rounded-xl text-xs font-black uppercase tracking-widest">Cancel</button>
                     <button onClick={() => {
@@ -147,6 +149,26 @@ export function SettingsModal({ user, onClose }: { user: any, onClose: () => voi
                 <button onClick={() => setIsResetConfirming(true)} className="w-full py-4 border border-red-500/30 hover:bg-red-500/10 text-red-500 font-black tracking-widest rounded-2xl transition-all uppercase text-[10px]">
                   I Compromised. Reset to Day 1.
                 </button>
+              )}
+
+              {user?.squadId && (
+                isSquadResetConfirming ? (
+                  <div className="bg-orange-500/10 border border-orange-500/30 rounded-2xl p-4 text-center">
+                    <AlertTriangle className="w-6 h-6 text-orange-500 mx-auto mb-2" />
+                    <p className="text-[10px] text-orange-400 uppercase tracking-widest font-bold mb-3">This will force the ENTIRE SQUAD to reset to Day 1. Are you sure?</p>
+                    <div className="flex gap-2">
+                      <button onClick={() => setIsSquadResetConfirming(false)} className="flex-1 py-3 bg-neutral-800 text-white rounded-xl text-xs font-black uppercase tracking-widest">Cancel</button>
+                      <button onClick={() => {
+                        adminResetSquad();
+                        onClose();
+                      }} className="flex-1 py-3 bg-orange-600 text-white rounded-xl text-xs font-black uppercase tracking-widest">Nuke Squad</button>
+                    </div>
+                  </div>
+                ) : (
+                  <button onClick={() => setIsSquadResetConfirming(true)} className="w-full py-4 border border-orange-500/30 hover:bg-orange-500/10 text-orange-500 font-black tracking-widest rounded-2xl transition-all uppercase text-[10px]">
+                    Nuke Squad to Day 1
+                  </button>
+                )
               )}
             </div>
           </motion.div>
@@ -174,7 +196,6 @@ export function SettingsModal({ user, onClose }: { user: any, onClose: () => voi
               </div>
             ))}
 
-            {/* INSTAGRAM CLOSE FRIENDS DROPDOWN */}
             <AnimatePresence>
               {Object.values(privacySettings).includes("close_friends") && (
                 <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="pt-6 border-t border-neutral-800 mt-6">

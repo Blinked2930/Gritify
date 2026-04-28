@@ -170,6 +170,32 @@ export const resetChallenge = mutation({
   }
 });
 
+// NEW: Reset Entire Squad
+export const adminResetSquad = mutation({
+  args: {},
+  handler: async (ctx) => {
+    try {
+      const user = await getOrCreateUser(ctx);
+      if (!user.squadId) return;
+      
+      const squadMembers = await ctx.db
+        .query("users")
+        .withIndex("by_squad", (q) => q.eq("squadId", user.squadId as string))
+        .collect();
+
+      for (const member of squadMembers) {
+        await ctx.db.patch(member._id, {
+          lastFailedStartDate: member.challengeStartDate,
+          challengeStartDate: Date.now()
+        });
+      }
+      return;
+    } catch (e: any) {
+      throw new ConvexError(`Squad Reset Failed: ${e.message}`);
+    }
+  }
+});
+
 export const joinSquad = mutation({
   args: { squadId: v.string() },
   handler: async (ctx, args) => {

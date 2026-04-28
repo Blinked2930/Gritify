@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { AnimatePresence, motion } from "framer-motion";
-import { ShieldCheck, Activity, Users, Shield, ArrowLeft, Loader2, Terminal } from "lucide-react";
+import { ShieldCheck, Activity, Users, Shield, ArrowLeft, Loader2 } from "lucide-react";
 import { CustomDropdown } from "@/components/features/CustomDropdown";
 
 export function OnboardingWizard({ user }: { user: any }) {
@@ -19,7 +19,6 @@ export function OnboardingWizard({ user }: { user: any }) {
   const [squadIdInput, setSquadIdInput] = useState("");
   
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [debugLogs, setDebugLogs] = useState<string[]>(["SYSTEM READY. AWAITING INITIALIZATION..."]);
 
   const [privacySettings, setPrivacySettings] = useState<{
     shareWorkouts: "everyone" | "close_friends" | "none";
@@ -37,53 +36,37 @@ export function OnboardingWizard({ user }: { user: any }) {
     closeFriends: []
   });
 
-  const addDebugLog = (msg: string, isError = false) => {
-    setDebugLogs(prev => [...prev, `[${new Date().toISOString().split('T')[1].slice(0, -1)}] ${isError ? 'ERROR: ' : '> '}${msg}`]);
-  };
-
   const isValidVessel = vesselSizeInput.trim() !== "" && !isNaN(parseFloat(vesselSizeInput));
 
   const completeSetup = async () => {
     if (isSubmitting) return;
     setIsSubmitting(true);
-    addDebugLog("Button clicked. Locking UI and compiling payload...");
     
     try {
       const parsed = parseFloat(vesselSizeInput);
       const bwParsed = parseFloat(bodyWeightInput);
       
-      const payload = { 
+      await updateSettings({ 
         vesselSize: isNaN(parsed) ? 40 : parsed, 
         vesselUnit: vesselUnitInput,
         privacySettings,
         hasCompletedSetup: true,
         ...(isNaN(bwParsed) ? {} : { bodyWeight: bwParsed, weightUnit: weightUnitInput })
-      };
-
-      addDebugLog(`Payload compiled: ${JSON.stringify(payload)}`);
-      addDebugLog("Awaiting updateSettings mutation...");
-
-      await updateSettings(payload as any);
-      addDebugLog("Database confirmed updateSettings. Success.");
+      });
 
       if (squadIdInput.trim() !== "") {
-        addDebugLog(`Awaiting joinSquad mutation for ID: [${squadIdInput}]...`);
         await joinSquad({ squadId: squadIdInput });
-        addDebugLog("Database confirmed joinSquad. Success.");
-      } else {
-        addDebugLog("No Squad ID provided. Bypassing joinSquad.");
       }
 
-      addDebugLog("Setup complete. Waiting for Convex to sync client state and unmount wizard...");
-    } catch (err: any) {
+      window.location.reload();
+    } catch (err) {
       console.error("Setup failed:", err);
-      addDebugLog(err.message || JSON.stringify(err), true);
       setIsSubmitting(false); 
     }
   };
 
   return (
-    <div className="min-h-screen bg-neutral-950 flex flex-col items-center justify-center p-6 text-neutral-50 relative overflow-hidden pb-48">
+    <div className="min-h-screen bg-neutral-950 flex flex-col items-center justify-center p-6 text-neutral-50 relative overflow-hidden">
       <div className="absolute top-0 left-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-[100px] pointer-events-none" />
       
       <div className="w-full max-w-md relative z-10 space-y-8">
@@ -190,20 +173,6 @@ export function OnboardingWizard({ user }: { user: any }) {
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
-
-      {/* DEBUG HUD */}
-      <div className="fixed bottom-0 left-0 right-0 h-40 bg-black/95 border-t border-emerald-500/50 p-4 font-mono text-[10px] text-emerald-400 overflow-y-auto z-[100] shadow-[0_-10px_30px_rgba(0,0,0,0.8)]">
-        <div className="flex items-center gap-2 text-white font-bold mb-2 pb-2 border-b border-emerald-500/30 tracking-widest">
-          <Terminal size={12} className="text-emerald-500"/> SYSTEM HUD // DIAGNOSTICS
-        </div>
-        <div className="space-y-1">
-          {debugLogs.map((log, idx) => (
-            <div key={idx} className={log.includes("ERROR") ? "text-red-500" : "text-emerald-400"}>
-              {log}
-            </div>
-          ))}
-        </div>
       </div>
     </div>
   );

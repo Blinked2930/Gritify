@@ -2,7 +2,7 @@
 
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { ArrowLeft, Flame, Droplet, BookOpen, Activity, Loader2, Utensils, ShieldAlert, User, CheckCircle, Camera, X } from "lucide-react";
+import { ArrowLeft, Flame, Droplet, BookOpen, Activity, Loader2, Utensils, ShieldAlert, User, CheckCircle, Camera, X, History } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -14,32 +14,6 @@ export default function SquadDirectoryDashboard() {
   const [selectedUserDetailed, setSelectedUserDetailed] = useState<any | null>(null);
   const [selectedLogDay, setSelectedLogDay] = useState<any | null>(null);
   const [expandedPhotoUrl, setExpandedPhotoUrl] = useState<string | null>(null);
-  const [currentDay, setCurrentDay] = useState(1);
-
-  useEffect(() => {
-    if (me?.challengeStartDate) {
-      const now = new Date();
-      now.setHours(now.getHours() - 2);
-      const start = new Date(me.challengeStartDate);
-      start.setHours(start.getHours() - 2);
-      start.setHours(0,0,0,0);
-      const todayObj = new Date(now);
-      todayObj.setHours(0,0,0,0);
-      const diffTime = Math.abs(todayObj.getTime() - start.getTime());
-      setCurrentDay(Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1);
-    }
-  }, [me]);
-
-  useEffect(() => {
-    if (selectedUserDetailed && currentDay) {
-      setTimeout(() => {
-        const activeDayEl = document.getElementById(`day-block-${currentDay}`);
-        if (activeDayEl) {
-          activeDayEl.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
-        }
-      }, 100);
-    }
-  }, [selectedUserDetailed, currentDay]);
 
   if (data === undefined || me === undefined) {
     return (
@@ -131,42 +105,36 @@ export default function SquadDirectoryDashboard() {
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${isW1 ? 'bg-orange-500/20 text-orange-500' : 'bg-neutral-800 text-neutral-400'}`}>
                         <Flame size={14} />
                       </div>
-                      <span className="text-[9px] uppercase tracking-widest font-bold text-neutral-500">W1</span>
                     </div>
 
                     <div className="flex flex-col items-center gap-1.5 group/item">
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${isW2 ? 'bg-violet-500/20 text-violet-500' : 'bg-neutral-800 text-neutral-400'}`}>
                         <Activity size={14} />
                       </div>
-                      <span className="text-[9px] uppercase tracking-widest font-bold text-neutral-500">W2</span>
                     </div>
 
                     <div className="flex flex-col items-center gap-1.5 group/item">
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${isWater ? 'bg-blue-500/20 text-blue-500' : 'bg-neutral-800 text-neutral-400'}`}>
                         <Droplet size={14} />
                       </div>
-                      <span className="text-[9px] uppercase tracking-widest font-bold text-neutral-500">H2O</span>
                     </div>
 
                     <div className="flex flex-col items-center gap-1.5 group/item">
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${isRead ? 'bg-amber-500/20 text-amber-500' : 'bg-neutral-800 text-neutral-400'}`}>
                         <BookOpen size={14} />
                       </div>
-                      <span className="text-[9px] uppercase tracking-widest font-bold text-neutral-500">Read</span>
                     </div>
 
                     <div className="flex flex-col items-center gap-1.5 group/item">
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${isDiet ? 'bg-emerald-500/20 text-emerald-500' : 'bg-red-500/20 text-red-500'}`}>
                         <Utensils size={14} />
                       </div>
-                      <span className="text-[9px] uppercase tracking-widest font-bold text-neutral-500">Diet</span>
                     </div>
 
                     <div className="flex flex-col items-center gap-1.5 group/item">
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${isPhoto ? 'bg-cyan-500/20 text-cyan-500' : 'bg-neutral-800 text-neutral-400'}`}>
                         <Camera size={14} />
                       </div>
-                      <span className="text-[9px] uppercase tracking-widest font-bold text-neutral-500">Pic</span>
                     </div>
                   </div>
                 </motion.button>
@@ -183,16 +151,15 @@ export default function SquadDirectoryDashboard() {
   // ==========================================
   const targetUser = selectedUserDetailed.user;
   const targetStats = selectedUserDetailed.stats;
+  const allTargetLogs = selectedUserDetailed.logs || [];
   const isMe = selectedUserDetailed.isMe;
 
-  // CRITICAL FIX: Only render logs that occurred AFTER the user's challengeStartDate
-  const targetLogs = (selectedUserDetailed.logs || []).filter((l: any) => {
-    if (!targetUser.challengeStartDate) return true;
-    const logDate = new Date(l.date);
-    const startDate = new Date(targetUser.challengeStartDate);
-    startDate.setHours(0,0,0,0);
-    return logDate >= startDate;
-  });
+  const challengeStart = targetUser.challengeStartDate ? new Date(targetUser.challengeStartDate) : new Date(0);
+  challengeStart.setHours(0,0,0,0);
+
+  // Split logs into Current Streak vs Historical Vault
+  const currentLogs = allTargetLogs.filter((l: any) => new Date(l.date) >= challengeStart);
+  const historyLogs = allTargetLogs.filter((l: any) => new Date(l.date) < challengeStart).sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   const checkAccess = (setting: any) => {
     if (isMe) return true;
@@ -212,29 +179,29 @@ export default function SquadDirectoryDashboard() {
   const waterTarget = targetUser?.vesselUnit === "liters" ? 3.78 : targetUser?.vesselUnit === "ml" ? 3785 : 128;
   const readingTarget = targetUser?.dailyReadingGoal || 10;
 
+  const generateBlockState = (log: any, isHistory = false) => {
+    if (!log) return "future";
+    const currentWater = ((log.waterTotal || 0) * (targetUser?.vesselSize || 1));
+    const isW1 = !!log.workout1?.done;
+    const isW2 = !!log.workout2?.done;
+    const isWater = currentWater >= waterTarget;
+    const isRead = (log.readingTotal || 0) >= readingTarget;
+    const isDiet = !!log.diet;
+    const isPhoto = !!log.photoStorageId;
+    
+    const isPerfectDay = isW1 && isW2 && isWater && isRead && isDiet && isPhoto;
+
+    if (log.status === "failed") return "failed";
+    if (isPerfectDay) return isHistory ? "history_success" : "success";
+    return isHistory ? "history_pending" : "pending"; 
+  };
+
+  // Build the 75 blocks for the current attempt
   const calendarBlocks = Array.from({ length: 75 }).map((_, i) => {
     const dayNum = i + 1;
-    const sortedLogs = [...targetLogs].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    const sortedLogs = [...currentLogs].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     const log = sortedLogs[i]; 
-    
-    let state = "future";
-    if (log) {
-      const currentWater = ((log.waterTotal || 0) * (targetUser?.vesselSize || 1));
-      
-      const isW1 = !!log.workout1?.done;
-      const isW2 = !!log.workout2?.done;
-      const isWater = currentWater >= waterTarget;
-      const isRead = (log.readingTotal || 0) >= readingTarget;
-      const isDiet = !!log.diet;
-      const isPhoto = !!log.photoStorageId;
-      
-      const isPerfectDay = isW1 && isW2 && isWater && isRead && isDiet && isPhoto;
-
-      if (log.status === "failed") state = "failed";
-      else if (isPerfectDay) state = "success";
-      else state = "pending"; 
-    }
-    return { dayNum, state, log };
+    return { dayNum, state: generateBlockState(log), log };
   });
 
   return (
@@ -253,106 +220,158 @@ export default function SquadDirectoryDashboard() {
           </div>
         </div>
 
-        {/* Aggregate Stats */}
-        <div className="grid grid-cols-2 gap-4 relative z-10">
-          <div className="bg-neutral-900/40 border border-neutral-800 p-5 rounded-2xl">
-            <p className="flex items-center text-neutral-500 text-[10px] font-bold uppercase tracking-widest mb-1 gap-1"><Flame size={12} className="text-orange-500" /> Cals</p>
-            {canViewWorkouts ? (
-              <p className="text-2xl font-black text-white">{targetStats?.totalCals?.toLocaleString() || 0}</p>
-            ) : (
-              <p className="text-xs font-bold text-neutral-600 uppercase flex items-center gap-1 mt-2"><ShieldAlert size={14} /> Hidden</p>
-            )}
-          </div>
+        {/* Lifetime Stats */}
+        <div>
+          <h3 className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-3 flex items-center gap-2"><Activity size={14}/> Lifetime Aggregate Telemetry</h3>
+          <div className="grid grid-cols-2 gap-4 relative z-10">
+            <div className="bg-neutral-900/40 border border-neutral-800 p-5 rounded-2xl">
+              <p className="flex items-center text-neutral-500 text-[10px] font-bold uppercase tracking-widest mb-1 gap-1"><Flame size={12} className="text-orange-500" /> Cals</p>
+              {canViewWorkouts ? (
+                <p className="text-2xl font-black text-white">{targetStats?.totalCals?.toLocaleString() || 0}</p>
+              ) : (
+                <p className="text-xs font-bold text-neutral-600 uppercase flex items-center gap-1 mt-2"><ShieldAlert size={14} /> Hidden</p>
+              )}
+            </div>
 
-          <div className="bg-neutral-900/40 border border-neutral-800 p-5 rounded-2xl">
-            <p className="flex items-center text-neutral-500 text-[10px] font-bold uppercase tracking-widest mb-1 gap-1"><Activity size={12} className="text-violet-500" /> Workouts</p>
-            {canViewWorkouts ? (
-              <p className="text-2xl font-black text-white">{targetStats?.workoutCount || 0}</p>
-            ) : (
-              <p className="text-xs font-bold text-neutral-600 uppercase flex items-center gap-1 mt-2"><ShieldAlert size={14} /> Hidden</p>
-            )}
-          </div>
+            <div className="bg-neutral-900/40 border border-neutral-800 p-5 rounded-2xl">
+              <p className="flex items-center text-neutral-500 text-[10px] font-bold uppercase tracking-widest mb-1 gap-1"><Activity size={12} className="text-violet-500" /> Workouts</p>
+              {canViewWorkouts ? (
+                <p className="text-2xl font-black text-white">{targetStats?.workoutCount || 0}</p>
+              ) : (
+                <p className="text-xs font-bold text-neutral-600 uppercase flex items-center gap-1 mt-2"><ShieldAlert size={14} /> Hidden</p>
+              )}
+            </div>
 
-          <div className="bg-neutral-900/40 border border-neutral-800 p-5 rounded-2xl">
-            <p className="flex items-center text-neutral-500 text-[10px] font-bold uppercase tracking-widest mb-1 gap-1"><Droplet size={12} className="text-blue-500" /> Water</p>
-            {canViewWater ? (
-              <p className="text-2xl font-black text-white">{targetStats?.totalWater?.toLocaleString() || 0}</p>
-            ) : (
-              <p className="text-xs font-bold text-neutral-600 uppercase flex items-center gap-1 mt-2"><ShieldAlert size={14} /> Hidden</p>
-            )}
-          </div>
+            <div className="bg-neutral-900/40 border border-neutral-800 p-5 rounded-2xl">
+              <p className="flex items-center text-neutral-500 text-[10px] font-bold uppercase tracking-widest mb-1 gap-1"><Droplet size={12} className="text-blue-500" /> Water</p>
+              {canViewWater ? (
+                <p className="text-2xl font-black text-white">{targetStats?.totalWater?.toLocaleString() || 0}</p>
+              ) : (
+                <p className="text-xs font-bold text-neutral-600 uppercase flex items-center gap-1 mt-2"><ShieldAlert size={14} /> Hidden</p>
+              )}
+            </div>
 
-          <div className="bg-neutral-900/40 border border-neutral-800 p-5 rounded-2xl">
-            <p className="flex items-center text-neutral-500 text-[10px] font-bold uppercase tracking-widest mb-1 gap-1"><BookOpen size={12} className="text-amber-500" /> Pages</p>
-            {canViewReading ? (
-              <p className="text-2xl font-black text-white">{targetStats?.totalPages?.toLocaleString() || 0}</p>
-            ) : (
-              <p className="text-xs font-bold text-neutral-600 uppercase flex items-center gap-1 mt-2"><ShieldAlert size={14} /> Hidden</p>
-            )}
+            <div className="bg-neutral-900/40 border border-neutral-800 p-5 rounded-2xl">
+              <p className="flex items-center text-neutral-500 text-[10px] font-bold uppercase tracking-widest mb-1 gap-1"><BookOpen size={12} className="text-amber-500" /> Pages</p>
+              {canViewReading ? (
+                <p className="text-2xl font-black text-white">{targetStats?.totalPages?.toLocaleString() || 0}</p>
+              ) : (
+                <p className="text-xs font-bold text-neutral-600 uppercase flex items-center gap-1 mt-2"><ShieldAlert size={14} /> Hidden</p>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* GARMIN STYLE HEATMAP GRID */}
-        <div className="pt-2">
-          <div className="flex overflow-x-auto snap-x snap-mandatory gap-3 sm:gap-4 select-none bg-neutral-900/20 p-5 rounded-3xl border border-neutral-800/30 backdrop-blur-xl pb-5 hide-scrollbar relative">
-            {calendarBlocks.map((block, idx) => {
-              const log = block.log;
-              const currentWater = log ? ((log.waterTotal || 0) * (targetUser?.vesselSize || 1)) : 0;
-              
-              const isW1 = log?.workout1?.done;
-              const isW2 = log?.workout2?.done;
-              const isWater = currentWater >= waterTarget;
-              const isRead = log && (log.readingTotal || 0) >= readingTarget;
-              const isDiet = log?.diet;
-              const isPhoto = log?.photoStorageId;
+        {/* CURRENT 75-DAY GRID */}
+        <div>
+          <h3 className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest mb-3 flex items-center gap-2"><CheckCircle size={14}/> Active 75-Day Protocol</h3>
+          <div className="bg-neutral-900/20 p-5 rounded-3xl border border-neutral-800/30 backdrop-blur-xl">
+            <div className="grid grid-cols-7 gap-2 sm:gap-3">
+              {calendarBlocks.map((block, idx) => {
+                const log = block.log;
+                const currentWater = log ? ((log.waterTotal || 0) * (targetUser?.vesselSize || 1)) : 0;
+                
+                const isW1 = log?.workout1?.done;
+                const isW2 = log?.workout2?.done;
+                const isWater = currentWater >= waterTarget;
+                const isRead = log && (log.readingTotal || 0) >= readingTarget;
+                const isDiet = log?.diet;
+                const isPhoto = log?.photoStorageId;
 
-              let blockBg = "bg-neutral-900/50 border-neutral-800 text-neutral-600";
-              if (block.state === "success") {
-                blockBg = "bg-gradient-to-b from-emerald-500/20 to-emerald-900/40 border-emerald-500/50 text-emerald-100 shadow-[0_0_15px_rgba(16,185,129,0.15)]"; 
-              } else if (block.state === "pending") {
-                blockBg = "bg-neutral-900 border-neutral-700 text-white hover:bg-neutral-800"; 
-              } else if (block.state === "failed") {
-                blockBg = "bg-red-950/30 border-red-900/50 text-red-500";
-              }
+                let blockBg = "bg-neutral-900/50 border-neutral-800 text-neutral-600";
+                if (block.state === "success") {
+                  blockBg = "bg-gradient-to-b from-emerald-500/20 to-emerald-900/40 border-emerald-500/50 text-emerald-100 shadow-[0_0_15px_rgba(16,185,129,0.15)]"; 
+                } else if (block.state === "pending") {
+                  blockBg = "bg-neutral-900 border-neutral-700 text-white hover:bg-neutral-800"; 
+                } else if (block.state === "failed") {
+                  blockBg = "bg-red-950/30 border-red-900/50 text-red-500";
+                }
 
-              return (
-                <motion.button 
-                  key={block.dayNum} 
-                  id={`day-block-${block.dayNum}`}
-                  initial={idx < 15 ? { opacity: 0, scale: 0.8 } : false}
-                  animate={idx < 15 ? { opacity: 1, scale: 1 } : false}
-                  transition={{ delay: idx * 0.02 }}
-                  disabled={block.state === "future"}
-                  onClick={() => block.log && setSelectedLogDay({ ...block.log, dayNum: block.dayNum })}
-                  className={`flex-shrink-0 snap-center w-14 h-[68px] relative rounded-xl border flex flex-col items-center justify-start pt-2 transition-all duration-300 font-extrabold text-base tracking-tighter ${blockBg} overflow-hidden`}
-                >
-                  <span className="relative z-20 mb-1">{block.dayNum}</span>
+                return (
+                  <motion.button 
+                    key={block.dayNum} 
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: (idx % 14) * 0.02 }}
+                    disabled={block.state === "future"}
+                    onClick={() => block.log && setSelectedLogDay({ ...block.log, dayNum: block.dayNum })}
+                    className={`relative w-full aspect-square rounded-xl border flex flex-col items-center justify-center transition-all duration-300 font-extrabold text-xs sm:text-sm tracking-tighter ${blockBg} overflow-hidden`}
+                  >
+                    <span className="relative z-20 mb-2">{block.dayNum}</span>
+                    
+                    {block.state !== "future" && (
+                      <div className="absolute bottom-1.5 left-1.5 right-1.5 flex gap-[1px] h-1 sm:h-1.5">
+                        <div className={`flex-1 rounded-sm transition-colors ${isW1 ? 'bg-orange-500' : 'bg-neutral-800/80'}`} />
+                        <div className={`flex-1 rounded-sm transition-colors ${isW2 ? 'bg-violet-500' : 'bg-neutral-800/80'}`} />
+                        <div className={`flex-1 rounded-sm transition-colors ${isWater ? 'bg-blue-500' : 'bg-neutral-800/80'}`} />
+                        <div className={`flex-1 rounded-sm transition-colors ${isRead ? 'bg-amber-500' : 'bg-neutral-800/80'}`} />
+                        <div className={`flex-1 rounded-sm transition-colors ${isDiet ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                        <div className={`flex-1 rounded-sm transition-colors ${isPhoto ? 'bg-cyan-500' : 'bg-neutral-800/80'}`} />
+                      </div>
+                    )}
+                  </motion.button>
+                );
+              })}
+            </div>
+            
+            <div className="flex justify-between px-2 mt-5">
+               <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-orange-500"></div><span className="text-[8px] uppercase tracking-widest text-neutral-500 font-bold">W1</span></div>
+               <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-violet-500"></div><span className="text-[8px] uppercase tracking-widest text-neutral-500 font-bold">W2</span></div>
+               <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-blue-500"></div><span className="text-[8px] uppercase tracking-widest text-neutral-500 font-bold">H2O</span></div>
+               <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-amber-500"></div><span className="text-[8px] uppercase tracking-widest text-neutral-500 font-bold">Read</span></div>
+               <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-emerald-500"></div><span className="text-[8px] uppercase tracking-widest text-neutral-500 font-bold">Diet</span></div>
+               <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-cyan-500"></div><span className="text-[8px] uppercase tracking-widest text-neutral-500 font-bold">Pic</span></div>
+            </div>
+          </div>
+        </div>
+
+        {/* HISTORICAL VAULT */}
+        {historyLogs.length > 0 && (
+          <div>
+             <h3 className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-3 flex items-center gap-2"><History size={14}/> Legacy Telemetry Vault</h3>
+             <div className="flex overflow-x-auto gap-2 sm:gap-3 hide-scrollbar pb-4">
+                {historyLogs.map((log: any, idx: number) => {
+                  const state = generateBlockState(log, true);
                   
-                  {block.state !== "future" && (
-                    <div className="absolute bottom-1.5 left-1.5 right-1.5 flex gap-[2px] h-1.5">
-                      <div className={`flex-1 rounded-sm transition-colors ${isW1 ? 'bg-orange-500' : 'bg-neutral-800/80'}`} />
-                      <div className={`flex-1 rounded-sm transition-colors ${isW2 ? 'bg-violet-500' : 'bg-neutral-800/80'}`} />
-                      <div className={`flex-1 rounded-sm transition-colors ${isWater ? 'bg-blue-500' : 'bg-neutral-800/80'}`} />
-                      <div className={`flex-1 rounded-sm transition-colors ${isRead ? 'bg-amber-500' : 'bg-neutral-800/80'}`} />
-                      <div className={`flex-1 rounded-sm transition-colors ${isDiet ? 'bg-emerald-500' : 'bg-red-500'}`} />
-                      <div className={`flex-1 rounded-sm transition-colors ${isPhoto ? 'bg-cyan-500' : 'bg-neutral-800/80'}`} />
-                    </div>
-                  )}
-                </motion.button>
-              );
-            })}
-            <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-neutral-900/60 to-transparent pointer-events-none rounded-r-3xl" />
+                  const currentWater = ((log.waterTotal || 0) * (targetUser?.vesselSize || 1));
+                  const isW1 = !!log.workout1?.done;
+                  const isW2 = !!log.workout2?.done;
+                  const isWater = currentWater >= waterTarget;
+                  const isRead = (log.readingTotal || 0) >= readingTarget;
+                  const isDiet = !!log.diet;
+                  const isPhoto = !!log.photoStorageId;
+
+                  let blockBg = "bg-neutral-900 border-neutral-800 text-neutral-400";
+                  if (state === "history_success") blockBg = "bg-emerald-950/20 border-emerald-900/30 text-emerald-600/50";
+                  if (state === "failed") blockBg = "bg-red-950/20 border-red-900/30 text-red-600/50";
+
+                  // Extract just the day/month for a tiny label
+                  const dateObj = new Date(log.date);
+                  const dateLabel = `${dateObj.getMonth()+1}/${dateObj.getDate()}`;
+
+                  return (
+                    <button 
+                      key={log._id}
+                      onClick={() => setSelectedLogDay({ ...log, dayNum: "Legacy" })}
+                      className={`flex-shrink-0 w-12 h-14 sm:w-14 sm:h-16 relative rounded-xl border flex flex-col items-center justify-center transition-all ${blockBg} overflow-hidden hover:border-neutral-600`}
+                    >
+                      <span className="relative z-20 text-[9px] sm:text-[10px] font-black tracking-widest mb-2 opacity-50">{dateLabel}</span>
+                      
+                      <div className="absolute bottom-1.5 left-1.5 right-1.5 flex gap-[1px] h-1 opacity-40">
+                        <div className={`flex-1 rounded-sm transition-colors ${isW1 ? 'bg-orange-500' : 'bg-neutral-800'}`} />
+                        <div className={`flex-1 rounded-sm transition-colors ${isW2 ? 'bg-violet-500' : 'bg-neutral-800'}`} />
+                        <div className={`flex-1 rounded-sm transition-colors ${isWater ? 'bg-blue-500' : 'bg-neutral-800'}`} />
+                        <div className={`flex-1 rounded-sm transition-colors ${isRead ? 'bg-amber-500' : 'bg-neutral-800'}`} />
+                        <div className={`flex-1 rounded-sm transition-colors ${isDiet ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                        <div className={`flex-1 rounded-sm transition-colors ${isPhoto ? 'bg-cyan-500' : 'bg-neutral-800'}`} />
+                      </div>
+                    </button>
+                  );
+                })}
+             </div>
           </div>
-          
-          <div className="flex justify-between px-2 mt-3">
-             <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-orange-500"></div><span className="text-[8px] uppercase tracking-widest text-neutral-500 font-bold">W1</span></div>
-             <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-violet-500"></div><span className="text-[8px] uppercase tracking-widest text-neutral-500 font-bold">W2</span></div>
-             <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-blue-500"></div><span className="text-[8px] uppercase tracking-widest text-neutral-500 font-bold">H2O</span></div>
-             <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-amber-500"></div><span className="text-[8px] uppercase tracking-widest text-neutral-500 font-bold">Read</span></div>
-             <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-emerald-500"></div><span className="text-[8px] uppercase tracking-widest text-neutral-500 font-bold">Diet</span></div>
-             <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-cyan-500"></div><span className="text-[8px] uppercase tracking-widest text-neutral-500 font-bold">Pic</span></div>
-          </div>
-        </div>
+        )}
+
       </div>
 
       {/* Individual Day Modal */}
