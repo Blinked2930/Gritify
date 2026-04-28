@@ -4,9 +4,8 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useState, useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Camera, Settings, X, Plus, Minus, CheckCircle, Droplet, BookOpen, Users, Flame, Activity, ShieldCheck, Dumbbell, Shield } from "lucide-react";
+import { Camera, Settings, X, Plus, Minus, CheckCircle, Droplet, BookOpen, Users, Flame, Activity, ShieldCheck, Dumbbell, Shield, AlertTriangle } from "lucide-react";
 import Link from "next/link";
-import { DAILY_VAULT_QUESTIONS as QUESTIONS } from "@/lib/vault-questions";
 import { CustomDropdown } from "@/components/features/CustomDropdown";
 import { useClerk } from "@clerk/nextjs";
 
@@ -46,9 +45,160 @@ export default function DashboardClient() {
     );
   }
 
+  // INTERCEPT NEW USERS FOR SETUP
+  if (user.hasCompletedSetup === false || user.hasCompletedSetup === undefined) {
+    return <OnboardingWizard user={user} />;
+  }
+
   return <DashboardMain user={user} />;
 }
 
+// =====================================
+// NEW: ONBOARDING WIZARD
+// =====================================
+function OnboardingWizard({ user }: { user: any }) {
+  const [step, setStep] = useState(1);
+  const updateSettings = useMutation(api.logs.updateUserSettings);
+  const joinSquad = useMutation(api.logs.joinSquad);
+
+  const [vesselSizeInput, setVesselSizeInput] = useState("128");
+  const [vesselUnitInput, setVesselUnitInput] = useState<"oz" | "ml" | "liters">("oz");
+  const [bodyWeightInput, setBodyWeightInput] = useState("160");
+  const [weightUnitInput, setWeightUnitInput] = useState<"lbs" | "kg">("lbs");
+  const [squadIdInput, setSquadIdInput] = useState("");
+  const [privacySettings, setPrivacySettings] = useState<{
+    shareWorkouts: "everyone" | "close_friends" | "none";
+    shareWater: "everyone" | "close_friends" | "none";
+    shareReading: "everyone" | "close_friends" | "none";
+    shareDiet: "everyone" | "close_friends" | "none";
+    sharePhotos: "everyone" | "close_friends" | "none";
+    closeFriends: string[];
+  }>({
+    shareWorkouts: "everyone",
+    shareWater: "everyone",
+    shareReading: "everyone",
+    shareDiet: "everyone",
+    sharePhotos: "close_friends",
+    closeFriends: []
+  });
+
+  const completeSetup = async () => {
+    const parsed = parseFloat(vesselSizeInput);
+    const bwParsed = parseFloat(bodyWeightInput);
+    
+    await updateSettings({ 
+      vesselSize: isNaN(parsed) ? 128 : parsed, 
+      vesselUnit: vesselUnitInput,
+      privacySettings,
+      hasCompletedSetup: true,
+      ...(isNaN(bwParsed) ? {} : { bodyWeight: bwParsed, weightUnit: weightUnitInput })
+    });
+
+    if (squadIdInput.trim() !== "") {
+      await joinSquad({ squadId: squadIdInput });
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-neutral-950 flex flex-col items-center justify-center p-6 text-neutral-50 relative overflow-hidden">
+      <div className="absolute top-0 left-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-[100px] pointer-events-none" />
+      
+      <div className="w-full max-w-md relative z-10 space-y-8">
+        <div className="text-center space-y-2">
+          <div className="w-16 h-16 bg-neutral-900 border border-neutral-800 rounded-2xl flex items-center justify-center mx-auto mb-6">
+            <ShieldCheck size={28} className="text-emerald-500" />
+          </div>
+          <h1 className="text-3xl font-black text-white uppercase tracking-tight">Initialization</h1>
+          <p className="text-neutral-500 text-sm">Configure your telemetry before entering the grid.</p>
+        </div>
+
+        <div className="flex justify-center gap-2 mb-8">
+          {[1, 2, 3].map(i => (
+            <div key={i} className={`h-1.5 rounded-full transition-all duration-500 ${step === i ? "w-12 bg-emerald-500" : step > i ? "w-4 bg-emerald-500/30" : "w-4 bg-neutral-800"}`} />
+          ))}
+        </div>
+
+        <AnimatePresence mode="wait">
+          {step === 1 && (
+            <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6 bg-neutral-900/50 p-6 rounded-3xl border border-neutral-800">
+              <h2 className="text-sm font-black uppercase text-emerald-500 tracking-widest flex items-center gap-2"><Activity size={16}/> Base Metrics</h2>
+              
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <label className="block text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-2">Vessel Size</label>
+                  <input type="text" value={vesselSizeInput} onChange={e => setVesselSizeInput(e.target.value)} className="w-full bg-neutral-950 border border-neutral-800 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500 font-mono text-sm" />
+                </div>
+                <div className="w-1/3">
+                  <label className="block text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-2">Unit</label>
+                  <CustomDropdown options={[{label: "oz", value: "oz"}, {label: "ml", value: "ml"}, {label: "liters", value: "liters"}]} value={vesselUnitInput} onChange={(val) => setVesselUnitInput(val as any)} />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <label className="block text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-2">Weight <span className="lowercase text-neutral-600">(opt)*</span></label>
+                  <input type="number" value={bodyWeightInput} onChange={e => setBodyWeightInput(e.target.value)} className="w-full bg-neutral-950 border border-neutral-800 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500 font-mono text-sm" />
+                </div>
+                <div className="w-1/3">
+                  <label className="block text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-2">Unit</label>
+                  <CustomDropdown options={[{label: "lbs", value: "lbs"}, {label: "kg", value: "kg"}]} value={weightUnitInput} onChange={(val) => setWeightUnitInput(val as any)} />
+                </div>
+              </div>
+              <button onClick={() => setStep(2)} className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-black tracking-widest rounded-2xl transition-all uppercase text-xs mt-4">Next Step &rarr;</button>
+            </motion.div>
+          )}
+
+          {step === 2 && (
+            <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6 bg-neutral-900/50 p-6 rounded-3xl border border-neutral-800">
+              <h2 className="text-sm font-black uppercase text-emerald-500 tracking-widest flex items-center gap-2"><Users size={16}/> Squad Network</h2>
+              <p className="text-[10px] text-neutral-400 uppercase tracking-widest font-bold leading-relaxed">Enter a shared Squad ID to link your data with an accountability group. You can leave this blank and join later.</p>
+              
+              <div>
+                <input type="text" placeholder="e.g. alpha-squad" value={squadIdInput} onChange={e => setSquadIdInput(e.target.value)} className="w-full bg-neutral-950 border border-neutral-800 rounded-2xl px-4 py-4 text-white focus:outline-none focus:border-emerald-500 font-mono text-sm" />
+              </div>
+              
+              <div className="flex gap-3 pt-2">
+                <button onClick={() => setStep(1)} className="px-4 py-4 bg-neutral-800 text-white rounded-2xl hover:bg-neutral-700 transition-colors"><ArrowLeft size={18}/></button>
+                <button onClick={() => setStep(3)} className="flex-1 py-4 bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-black tracking-widest rounded-2xl transition-all uppercase text-xs">Next Step &rarr;</button>
+              </div>
+            </motion.div>
+          )}
+
+          {step === 3 && (
+            <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6 bg-neutral-900/50 p-6 rounded-3xl border border-neutral-800">
+              <h2 className="text-sm font-black uppercase text-emerald-500 tracking-widest flex items-center gap-2"><Shield size={16}/> Global Privacy</h2>
+              <p className="text-[10px] text-neutral-400 uppercase tracking-widest font-bold leading-relaxed mb-4">Control what your squad can see. (You can configure specific 'Close Friends' in settings later).</p>
+              
+              <div className="space-y-4">
+                {[
+                  { key: "shareWorkouts", label: "Workouts" },
+                  { key: "sharePhotos", label: "Progress Photos" },
+                ].map((setting) => (
+                  <div key={setting.key} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <span className="text-xs font-bold text-neutral-300 uppercase tracking-widest">{setting.label}</span>
+                    <div className="flex bg-neutral-950 p-1 rounded-xl border border-neutral-800 gap-1">
+                      <button onClick={() => setPrivacySettings({...privacySettings, [setting.key]: "everyone"})} className={`flex-1 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${privacySettings[setting.key as keyof typeof privacySettings] === "everyone" ? "bg-emerald-500/20 text-emerald-400" : "text-neutral-600"}`}>All</button>
+                      <button onClick={() => setPrivacySettings({...privacySettings, [setting.key]: "close_friends"})} className={`flex-1 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${privacySettings[setting.key as keyof typeof privacySettings] === "close_friends" ? "bg-emerald-500/20 text-emerald-400" : "text-neutral-600"}`}>Close</button>
+                      <button onClick={() => setPrivacySettings({...privacySettings, [setting.key]: "none"})} className={`flex-1 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${privacySettings[setting.key as keyof typeof privacySettings] === "none" ? "bg-red-500/20 text-red-400" : "text-neutral-600"}`}>None</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex gap-3 pt-6 border-t border-neutral-800">
+                <button onClick={() => setStep(2)} className="px-4 py-4 bg-neutral-800 text-white rounded-2xl hover:bg-neutral-700 transition-colors"><ArrowLeft size={18}/></button>
+                <button onClick={completeSetup} className="flex-1 py-4 bg-gradient-to-r from-emerald-400 to-emerald-600 text-emerald-950 font-black tracking-widest rounded-2xl transition-all uppercase text-xs shadow-[0_0_20px_rgba(16,185,129,0.3)]">Enter Command</button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+}
+
+// =====================================
+// EXISTING: MAIN COMMAND DASHBOARD
+// =====================================
 function DashboardMain({ user }: { user: any }) {
   const { signOut } = useClerk();
   
@@ -58,6 +208,7 @@ function DashboardMain({ user }: { user: any }) {
   const updateLog = useMutation(api.logs.updateLog);
   const updateSettings = useMutation(api.logs.updateUserSettings);
   const joinSquad = useMutation(api.logs.joinSquad);
+  const resetChallenge = useMutation(api.logs.resetChallenge);
   const generateUploadUrl = useMutation(api.logs.generateUploadUrl);
   
   const [reflectionOpen, setReflectionOpen] = useState(false);
@@ -65,6 +216,7 @@ function DashboardMain({ user }: { user: any }) {
   
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"general" | "privacy">("general");
+  const [isResetConfirming, setIsResetConfirming] = useState(false);
 
   const [vesselSizeInput, setVesselSizeInput] = useState("128");
   const [vesselUnitInput, setVesselUnitInput] = useState<"oz" | "ml" | "liters">("oz");
@@ -231,7 +383,7 @@ function DashboardMain({ user }: { user: any }) {
           </div>
         </div>
 
-        {/* WORKOUT 1: OUTDOOR */}
+        {/* WORKOUT 1 */}
         <div className={`p-5 rounded-[24px] border backdrop-blur-md transition-all ${isW1Met ? 'bg-emerald-500/5 border-emerald-500/30' : 'bg-neutral-900/40 border-neutral-800'}`}>
           <div className="flex justify-between items-start mb-4">
             <div>
@@ -257,7 +409,7 @@ function DashboardMain({ user }: { user: any }) {
           </button>
         </div>
 
-        {/* WORKOUT 2: INDOOR */}
+        {/* WORKOUT 2 */}
         <div className={`p-5 rounded-[24px] border backdrop-blur-md transition-all ${isW2Met ? 'bg-emerald-500/5 border-emerald-500/30' : 'bg-neutral-900/40 border-neutral-800'}`}>
           <div className="flex justify-between items-start mb-4">
             <div>
@@ -376,7 +528,6 @@ function DashboardMain({ user }: { user: any }) {
               Diet Perfect
             </button>
             
-            {/* Removed capture="user" so the OS prompts for Camera OR Gallery */}
             <input type="file" accept="image/*" ref={fileInputRef} className="hidden" onChange={handlePhotoUpload} />
             <button 
               onClick={() => fileInputRef.current?.click()}
@@ -449,10 +600,31 @@ function DashboardMain({ user }: { user: any }) {
                         <CustomDropdown options={[{label: "lbs", value: "lbs"}, {label: "kg", value: "kg"}]} value={weightUnitInput} onChange={(val) => setWeightUnitInput(val as any)} />
                       </div>
                     </div>
-                    {/* RESTORED DISCLAIMER */}
                     <p className="text-[10px] text-neutral-500 font-mono mt-2 leading-tight">
                       *If provided, weight is only used to personalize your active calorie burn estimations.
                     </p>
+                  </div>
+                  
+                  {/* NEW: RESET BUTTON */}
+                  <div className="pt-6 border-t border-red-500/20 mt-6">
+                    {isResetConfirming ? (
+                      <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-4 text-center">
+                        <AlertTriangle className="w-6 h-6 text-red-500 mx-auto mb-2" />
+                        <p className="text-[10px] text-red-400 uppercase tracking-widest font-bold mb-3">This will permanently revert your progress to Day 1. Are you sure?</p>
+                        <div className="flex gap-2">
+                          <button onClick={() => setIsResetConfirming(false)} className="flex-1 py-3 bg-neutral-800 text-white rounded-xl text-xs font-black uppercase tracking-widest">Cancel</button>
+                          <button onClick={() => {
+                            resetChallenge();
+                            setSettingsOpen(false);
+                            setIsResetConfirming(false);
+                          }} className="flex-1 py-3 bg-red-600 text-white rounded-xl text-xs font-black uppercase tracking-widest">Confirm</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button onClick={() => setIsResetConfirming(true)} className="w-full py-4 border border-red-500/30 hover:bg-red-500/10 text-red-500 font-black tracking-widest rounded-2xl transition-all uppercase text-[10px]">
+                        I Compromised. Reset to Day 1.
+                      </button>
+                    )}
                   </div>
                 </motion.div>
               )}
@@ -513,7 +685,7 @@ function DashboardMain({ user }: { user: any }) {
                 </motion.div>
               )}
 
-              <div className="pt-6 mt-auto">
+              <div className="pt-6 mt-auto border-t border-neutral-800">
                 <button 
                   onClick={() => {
                     const parsed = parseFloat(vesselSizeInput);
@@ -537,7 +709,7 @@ function DashboardMain({ user }: { user: any }) {
                 </button>
                 <button 
                   onClick={() => signOut({ redirectUrl: '/' })}
-                  className="w-full py-4 bg-transparent border border-red-500/30 hover:bg-red-500/10 text-red-500 font-black tracking-widest rounded-2xl transition-all mt-3 uppercase text-[11px]"
+                  className="w-full py-4 bg-transparent border border-neutral-800 hover:bg-neutral-800 text-neutral-500 font-black tracking-widest rounded-2xl transition-all mt-3 uppercase text-[11px]"
                 >
                   Log Out
                 </button>

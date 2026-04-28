@@ -1,7 +1,6 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
-// CRITICAL FIX: The database now legally accepts our new dropdown values
 const PrivacyLevel = v.union(v.literal("everyone"), v.literal("close_friends"), v.literal("none"), v.boolean());
 
 export default defineSchema({
@@ -18,8 +17,9 @@ export default defineSchema({
     lastFailedStartDate: v.optional(v.number()), 
     bodyWeight: v.optional(v.number()), 
     weightUnit: v.optional(v.union(v.literal("lbs"), v.literal("kg"))),
+    hasCompletedSetup: v.optional(v.boolean()),
     
-    // NEW: Squad & Privacy Architecture
+    // Squad & Privacy Architecture
     squadId: v.optional(v.string()), 
     privacySettings: v.optional(
       v.object({
@@ -33,7 +33,7 @@ export default defineSchema({
     ),
   })
     .index("by_clerk_id", ["clerkId"])
-    .index("by_squad", ["squadId"]), // Fast lookup for squad members
+    .index("by_squad", ["squadId"]),
 
   challenges: defineTable({
     participants: v.array(v.id("users")),

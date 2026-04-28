@@ -27,6 +27,7 @@ async function getUser(ctx: any) {
       dailyReadingGoal: 10,
       isDemo: false,
       challengeStartDate: Date.now(),
+      hasCompletedSetup: false,
     };
   }
   return user;
@@ -50,6 +51,7 @@ async function getOrCreateUser(ctx: any) {
       dailyReadingGoal: 10,
       isDemo: false,
       challengeStartDate: Date.now(),
+      hasCompletedSetup: false,
     });
     user = await ctx.db.get(userId);
   } else if (identity.name && user.name !== identity.name) {
@@ -89,7 +91,6 @@ export const getMe = query({
   },
 });
 
-// NEW QUERY: Fetch squad members for the Close Friends multiselect dropdown
 export const getSquadMembers = query({
   args: {},
   handler: async (ctx) => {
@@ -111,7 +112,6 @@ export const generateUploadUrl = mutation(async (ctx) => {
   return await ctx.storage.generateUploadUrl();
 });
 
-// CRITICAL FIX: Allow the new complex strings or legacy booleans to prevent migration crashes
 const PrivacyLevel = v.union(v.literal("everyone"), v.literal("close_friends"), v.literal("none"), v.boolean());
 
 export const updateUserSettings = mutation({
@@ -121,6 +121,7 @@ export const updateUserSettings = mutation({
     dailyReadingGoal: v.optional(v.number()),
     bodyWeight: v.optional(v.number()),
     weightUnit: v.optional(v.union(v.literal("lbs"), v.literal("kg"))),
+    hasCompletedSetup: v.optional(v.boolean()),
     privacySettings: v.optional(v.object({
       shareWorkouts: PrivacyLevel,
       shareWater: PrivacyLevel,
@@ -138,9 +139,23 @@ export const updateUserSettings = mutation({
       ...(args.dailyReadingGoal && { dailyReadingGoal: args.dailyReadingGoal }),
       ...(args.bodyWeight && { bodyWeight: args.bodyWeight }),
       ...(args.weightUnit && { weightUnit: args.weightUnit }),
+      ...(args.hasCompletedSetup !== undefined && { hasCompletedSetup: args.hasCompletedSetup }),
       ...(args.privacySettings && { privacySettings: args.privacySettings }),
     });
   },
+});
+
+export const resetChallenge = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getOrCreateUser(ctx);
+    // Overwrite the start date to right now to mathematically reset to Day 1
+    await ctx.db.patch(user._id, { 
+      lastFailedStartDate: user.challengeStartDate,
+      challengeStartDate: Date.now() 
+    });
+    return;
+  }
 });
 
 export const joinSquad = mutation({

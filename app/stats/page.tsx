@@ -77,9 +77,6 @@ export default function SquadDirectoryDashboard() {
     return logs.find(l => l.date === todayStr);
   };
 
-  // ==========================================
-  // VIEW 1: SQUAD DIRECTORY
-  // ==========================================
   if (!selectedUserDetailed) {
     return (
       <div className="min-h-screen bg-neutral-950 text-neutral-50 px-4 pb-4 pt-[calc(env(safe-area-inset-top)+16px)] sm:px-6 sm:pb-6 sm:pt-[calc(env(safe-area-inset-top)+24px)] font-sans overflow-x-hidden pb-32 relative">
@@ -186,10 +183,17 @@ export default function SquadDirectoryDashboard() {
   // ==========================================
   const targetUser = selectedUserDetailed.user;
   const targetStats = selectedUserDetailed.stats;
-  const targetLogs = selectedUserDetailed.logs || [];
   const isMe = selectedUserDetailed.isMe;
 
-  // The isMe bypass guarantees you always see your own content.
+  // CRITICAL FIX: Only render logs that occurred AFTER the user's challengeStartDate
+  const targetLogs = (selectedUserDetailed.logs || []).filter((l: any) => {
+    if (!targetUser.challengeStartDate) return true;
+    const logDate = new Date(l.date);
+    const startDate = new Date(targetUser.challengeStartDate);
+    startDate.setHours(0,0,0,0);
+    return logDate >= startDate;
+  });
+
   const checkAccess = (setting: any) => {
     if (isMe) return true;
     if (setting === true || setting === "everyone" || setting === undefined) return true;
@@ -217,7 +221,6 @@ export default function SquadDirectoryDashboard() {
     if (log) {
       const currentWater = ((log.waterTotal || 0) * (targetUser?.vesselSize || 1));
       
-      // Calculate perfect day status strictly based on completion (ignoring privacy)
       const isW1 = !!log.workout1?.done;
       const isW2 = !!log.workout2?.done;
       const isWater = currentWater >= waterTarget;
@@ -296,7 +299,6 @@ export default function SquadDirectoryDashboard() {
               const log = block.log;
               const currentWater = log ? ((log.waterTotal || 0) * (targetUser?.vesselSize || 1)) : 0;
               
-              // CRITICAL FIX: The Garmin dots map raw completion status, utterly ignoring privacy.
               const isW1 = log?.workout1?.done;
               const isW2 = log?.workout2?.done;
               const isWater = currentWater >= waterTarget;
@@ -305,7 +307,6 @@ export default function SquadDirectoryDashboard() {
               const isPhoto = log?.photoStorageId;
 
               let blockBg = "bg-neutral-900/50 border-neutral-800 text-neutral-600";
-              // CRITICAL FIX: Restored the beautiful green success state
               if (block.state === "success") {
                 blockBg = "bg-gradient-to-b from-emerald-500/20 to-emerald-900/40 border-emerald-500/50 text-emerald-100 shadow-[0_0_15px_rgba(16,185,129,0.15)]"; 
               } else if (block.state === "pending") {
