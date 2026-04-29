@@ -1,14 +1,18 @@
-"use client";
-
-import { SignedIn, SignedOut, SignUpButton, SignInButton } from "@clerk/nextjs";
+import { SignUpButton, SignInButton } from "@clerk/nextjs";
+import { auth } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
 import { ShieldCheck, Target, Users } from "lucide-react";
-import Link from "next/link";
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
 
 export default function LandingPage() {
-  const router = useRouter();
+  // SERVER-SIDE INTERCEPT: Check if the user is already logged in
+  const { userId } = auth();
 
+  // If they have a session, skip the landing page entirely and go straight to the grid
+  if (userId) {
+    redirect("/dashboard");
+  }
+
+  // If there is no session, render the landing page as normal
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-50 flex flex-col relative overflow-hidden font-sans selection:bg-emerald-500/30">
       <div className="absolute top-[-20%] left-1/4 w-[800px] h-[800px] bg-emerald-500/10 rounded-full blur-[120px] pointer-events-none" />
@@ -47,24 +51,16 @@ export default function LandingPage() {
         </div>
 
         <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-          <SignedOut>
-            <SignUpButton mode="modal">
-              <button className="px-10 py-5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-black tracking-widest uppercase text-sm transition-all shadow-[0_0_30px_rgba(16,185,129,0.3)]">
-                Initialize Protocol
-              </button>
-            </SignUpButton>
-            <SignInButton mode="modal">
-              <button className="px-10 py-5 rounded-2xl bg-transparent border border-neutral-800 hover:bg-neutral-900 text-white font-black tracking-widest uppercase text-sm transition-all">
-                Login
-              </button>
-            </SignInButton>
-          </SignedOut>
-
-          <SignedIn>
-            <Link href="/dashboard" className="px-10 py-5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-black tracking-widest uppercase text-sm transition-all shadow-[0_0_30px_rgba(16,185,129,0.3)] text-center w-full">
-              Enter Command Center &rarr;
-            </Link>
-          </SignedIn>
+          <SignUpButton mode="modal" forceRedirectUrl="/dashboard">
+            <button className="px-10 py-5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-black tracking-widest uppercase text-sm transition-all shadow-[0_0_30px_rgba(16,185,129,0.3)]">
+              Initialize Protocol
+            </button>
+          </SignUpButton>
+          <SignInButton mode="modal" forceRedirectUrl="/dashboard">
+            <button className="px-10 py-5 rounded-2xl bg-transparent border border-neutral-800 hover:bg-neutral-900 text-white font-black tracking-widest uppercase text-sm transition-all">
+              Login
+            </button>
+          </SignInButton>
         </div>
       </main>
     </div>
