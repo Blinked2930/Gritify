@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { AnimatePresence, motion } from "framer-motion";
-import { X, Users, Shield, AlertTriangle, CheckCircle, User } from "lucide-react";
+import { X, Users, Shield, AlertTriangle, CheckCircle, User, Loader2 } from "lucide-react";
 import { CustomDropdown } from "@/components/features/CustomDropdown";
 import { useClerk, useUser } from "@clerk/nextjs";
 
@@ -22,6 +22,7 @@ export function SettingsModal({ user, onClose }: { user: any, onClose: () => voi
   const [isResetConfirming, setIsResetConfirming] = useState(false);
   const [isSquadResetConfirming, setIsSquadResetConfirming] = useState(false);
   const [isAccountDeleteConfirming, setIsAccountDeleteConfirming] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // General Settings State
   const [vesselSizeInput, setVesselSizeInput] = useState("128");
@@ -102,11 +103,15 @@ export function SettingsModal({ user, onClose }: { user: any, onClose: () => voi
   };
 
   const handleDeleteAccount = async () => {
+    if (!clerkUser) return;
+    setIsDeleting(true);
     try {
-      await clerkUser?.delete();
-      // NextJS & Clerk will automatically kick the user to the landing page
+      await clerkUser.delete();
+      // CRITICAL FIX: Hard redirect to wipe PWA state immediately
+      window.location.href = "/";
     } catch (e) {
       console.error("Failed to delete account:", e);
+      setIsDeleting(false); 
     }
   };
 
@@ -298,8 +303,10 @@ export function SettingsModal({ user, onClose }: { user: any, onClose: () => voi
                   <AlertTriangle className="w-6 h-6 text-red-500 mx-auto mb-2" />
                   <p className="text-[10px] text-red-400 uppercase tracking-widest font-bold mb-3">This permanently destroys your account and all telemetry. Are you sure?</p>
                   <div className="flex gap-2">
-                    <button onClick={() => setIsAccountDeleteConfirming(false)} className="flex-1 py-3 bg-neutral-800 text-white rounded-xl text-xs font-black uppercase tracking-widest">Cancel</button>
-                    <button onClick={handleDeleteAccount} className="flex-1 py-3 bg-red-600 text-white rounded-xl text-xs font-black uppercase tracking-widest">Destroy</button>
+                    <button onClick={() => setIsAccountDeleteConfirming(false)} disabled={isDeleting} className="flex-1 py-3 bg-neutral-800 text-white rounded-xl text-xs font-black uppercase tracking-widest disabled:opacity-50">Cancel</button>
+                    <button onClick={handleDeleteAccount} disabled={isDeleting} className="flex-1 py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-black uppercase tracking-widest disabled:opacity-50 flex justify-center items-center">
+                      {isDeleting ? <Loader2 size={16} className="animate-spin" /> : "Destroy"}
+                    </button>
                   </div>
                 </div>
               ) : (
