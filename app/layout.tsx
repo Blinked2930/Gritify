@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
+import { PwaInstallPrompt } from "@/components/features/PwaInstallPrompt";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -38,6 +39,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning className="bg-neutral-950" style={{ backgroundColor: "#0a0a0a" }}>
       <body className={`${inter.className} bg-neutral-950 text-neutral-50 overscroll-none antialiased min-h-screen`}>
         <Providers>
+          <PwaInstallPrompt />
           {children}
         </Providers>
       </body>

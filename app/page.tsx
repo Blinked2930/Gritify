@@ -4,20 +4,18 @@ import { redirect } from "next/navigation";
 import { ShieldCheck, Target, Users } from "lucide-react";
 
 export default function LandingPage() {
-  // SERVER-SIDE INTERCEPT: Check if the user is already logged in
   const { userId } = auth();
 
-  // If they have a session, skip the landing page entirely and go straight to the grid
   if (userId) {
     redirect("/dashboard");
   }
 
-  // If there is no session, render the landing page as normal
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-50 flex flex-col relative overflow-hidden font-sans selection:bg-emerald-500/30">
-      <div className="absolute top-[-20%] left-1/4 w-[800px] h-[800px] bg-emerald-500/10 rounded-full blur-[120px] pointer-events-none" />
+      {/* CRITICAL FIX: Centered the blur and constrained it so it doesn't cause mobile horizontal scrolling or hard edges */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[150vw] h-[150vw] sm:w-[800px] sm:h-[800px] bg-emerald-500/10 rounded-full blur-[100px] sm:blur-[120px] pointer-events-none" />
       
-      <main className="flex-grow flex flex-col items-center justify-center p-6 text-center relative z-10 max-w-3xl mx-auto">
+      <main className="flex-grow flex flex-col items-center justify-center p-6 text-center relative z-10 max-w-3xl mx-auto mt-12 sm:mt-0">
         
         <div className="w-20 h-20 bg-neutral-900 border border-neutral-800 rounded-3xl flex items-center justify-center mb-8 shadow-2xl">
           <ShieldCheck size={40} className="text-emerald-500" />
@@ -50,7 +48,7 @@ export default function LandingPage() {
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+        <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto pb-12 sm:pb-0">
           <SignUpButton mode="modal" forceRedirectUrl="/dashboard">
             <button className="px-10 py-5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-black tracking-widest uppercase text-sm transition-all shadow-[0_0_30px_rgba(16,185,129,0.3)]">
               Initialize Protocol
