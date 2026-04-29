@@ -83,7 +83,14 @@ export function SettingsModal({ user, onClose }: { user: any, onClose: () => voi
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/90 backdrop-blur-sm" onClick={onClose} />
-      <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-neutral-900 border border-neutral-800 p-6 rounded-3xl shadow-2xl relative z-10 w-full max-w-sm max-h-[90vh] overflow-y-auto hide-scrollbar flex flex-col">
+      
+      {/* CRITICAL FIX: Dynamic max-width based on active tab so Clerk has room to breathe */}
+      <motion.div 
+        initial={{ scale: 0.95, opacity: 0 }} 
+        animate={{ scale: 1, opacity: 1 }} 
+        exit={{ scale: 0.95, opacity: 0 }} 
+        className={`bg-neutral-900 border border-neutral-800 p-6 rounded-3xl shadow-2xl relative z-10 w-full max-h-[90vh] overflow-y-auto hide-scrollbar flex flex-col transition-all duration-300 ${activeTab === 'account' ? 'max-w-4xl' : 'max-w-sm'}`}
+      >
         
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-black text-white uppercase tracking-tight">Command Settings</h2>
@@ -152,6 +159,7 @@ export function SettingsModal({ user, onClose }: { user: any, onClose: () => voi
                 </button>
               )}
 
+              {/* ONLY RENDER SQUAD NUKE IF THEY ARE THE ADMIN */}
               {user?.squadId && user?.isSquadAdmin && (
                 isSquadResetConfirming ? (
                   <div className="bg-orange-500/10 border border-orange-500/30 rounded-2xl p-4 text-center">
@@ -232,29 +240,43 @@ export function SettingsModal({ user, onClose }: { user: any, onClose: () => voi
 
         {/* ACCOUNT TAB (CLERK NATIVE) */}
         {activeTab === "account" && (
-          <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="space-y-5 overflow-hidden rounded-2xl">
-            <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest mb-2">Manage your authentication and security.</p>
-            <div className="max-h-[60vh] overflow-y-auto hide-scrollbar -mx-4 px-4 flex justify-center">
-               <UserProfile 
-                 appearance={{
-                   variables: { colorBackground: "#0a0a0a", colorText: "white", colorPrimary: "#10b981", colorDanger: "#ef4444" },
-                   elements: { cardBox: "shadow-none w-full max-w-full bg-transparent", navbar: "hidden", pageScrollBox: "p-0" }
-                 }}
-               />
-            </div>
+          <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="w-full flex justify-center">
+             <UserProfile 
+               appearance={{
+                 variables: { 
+                   colorBackground: "#171717", // Neutral-900 to match the modal
+                   colorText: "white", 
+                   colorPrimary: "#10b981", // Emerald-500
+                   colorDanger: "#ef4444",
+                   colorInputBackground: "#0a0a0a", // Neutral-950
+                   colorInputText: "white",
+                 },
+                 elements: { 
+                   rootBox: "w-full",
+                   cardBox: "shadow-none w-full max-w-full bg-transparent border border-neutral-800 rounded-xl", 
+                   navbar: "hidden md:block border-r border-neutral-800",
+                   headerTitle: "text-white",
+                   headerSubtitle: "text-neutral-400",
+                   profileSectionTitleText: "text-emerald-500",
+                 }
+               }}
+             />
           </motion.div>
         )}
 
         <div className="pt-6 mt-auto border-t border-neutral-800">
-          <button 
-            onClick={handleSave}
-            className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-black tracking-widest rounded-2xl transition-all uppercase text-[11px] shadow-[0_0_20px_rgba(16,185,129,0.2)]"
-          >
-            Save Settings
-          </button>
+          {/* Clerk auto-saves, so we hide the Gritify save button when managing the account */}
+          {activeTab !== "account" && (
+            <button 
+              onClick={handleSave}
+              className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-black tracking-widest rounded-2xl transition-all uppercase text-[11px] shadow-[0_0_20px_rgba(16,185,129,0.2)] mb-3"
+            >
+              Save Settings
+            </button>
+          )}
           <button 
             onClick={() => signOut({ redirectUrl: '/' })}
-            className="w-full py-4 bg-transparent border border-neutral-800 hover:bg-neutral-800 text-neutral-500 font-black tracking-widest rounded-2xl transition-all mt-3 uppercase text-[11px]"
+            className="w-full py-4 bg-transparent border border-neutral-800 hover:bg-neutral-800 text-neutral-500 font-black tracking-widest rounded-2xl transition-all uppercase text-[11px]"
           >
             Log Out
           </button>
