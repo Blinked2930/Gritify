@@ -17,11 +17,12 @@ export default defineSchema({
     lastFailedStartDate: v.optional(v.number()), 
     bodyWeight: v.optional(v.number()), 
     weightUnit: v.optional(v.union(v.literal("lbs"), v.literal("kg"))),
-    
-    // CRITICAL FIX: Put the setup boolean back in the schema
     hasCompletedSetup: v.optional(v.boolean()),
     
+    // NEW: Squad Admin Architecture
     squadId: v.optional(v.string()), 
+    isSquadAdmin: v.optional(v.boolean()),
+    
     privacySettings: v.optional(
       v.object({
         shareWorkouts: PrivacyLevel,

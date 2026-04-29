@@ -151,7 +151,8 @@ export function SettingsModal({ user, onClose }: { user: any, onClose: () => voi
                 </button>
               )}
 
-              {user?.squadId && (
+              {/* ONLY RENDER SQUAD NUKE IF THEY ARE THE ADMIN */}
+              {user?.squadId && user?.isSquadAdmin && (
                 isSquadResetConfirming ? (
                   <div className="bg-orange-500/10 border border-orange-500/30 rounded-2xl p-4 text-center">
                     <AlertTriangle className="w-6 h-6 text-orange-500 mx-auto mb-2" />

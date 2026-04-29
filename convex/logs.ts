@@ -170,12 +170,17 @@ export const resetChallenge = mutation({
   }
 });
 
-// NEW: Reset Entire Squad
 export const adminResetSquad = mutation({
   args: {},
   handler: async (ctx) => {
     try {
       const user = await getOrCreateUser(ctx);
+      
+      // SECURITY LOCK: Only Admins can nuke the squad
+      if (!user.isSquadAdmin) {
+        throw new ConvexError("UNAUTHORIZED: Only the Squad Admin can nuke the protocol.");
+      }
+      
       if (!user.squadId) return;
       
       const squadMembers = await ctx.db
@@ -203,11 +208,27 @@ export const joinSquad = mutation({
       const user = await getOrCreateUser(ctx);
       const cleanId = args.squadId.trim().toLowerCase();
       
+      // If leaving a squad entirely
+      if (cleanId === "") {
+        await ctx.db.patch(user._id, { squadId: undefined, isSquadAdmin: false });
+        return;
+      }
+
+      // Check if squad exists to assign Admin rights
+      const existingMembers = await ctx.db
+        .query("users")
+        .withIndex("by_squad", (q) => q.eq("squadId", cleanId))
+        .collect();
+      
+      // First person to join an ID gets Admin keys
+      const isAdmin = existingMembers.length === 0;
+
       await ctx.db.patch(user._id, {
-        squadId: cleanId === "" ? undefined : cleanId
+        squadId: cleanId,
+        isSquadAdmin: isAdmin
       });
 
-      if (cleanId !== "" && cleanId !== user.squadId) {
+      if (cleanId !== user.squadId) {
         await ctx.scheduler.runAfter(0, (internal as any).push.notifyPartnerAction, {
           userId: user._id,
           userName: user.name,

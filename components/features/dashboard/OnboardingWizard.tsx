@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { AnimatePresence, motion } from "framer-motion";
-import { ShieldCheck, Activity, Users, Shield, ArrowLeft, Loader2 } from "lucide-react";
+import { ShieldCheck, Activity, Users, Shield, ArrowLeft, Loader2, BookOpen, Droplet, Camera } from "lucide-react";
 import { CustomDropdown } from "@/components/features/CustomDropdown";
 
 export function OnboardingWizard({ user }: { user: any }) {
@@ -57,8 +57,10 @@ export function OnboardingWizard({ user }: { user: any }) {
       if (squadIdInput.trim() !== "") {
         await joinSquad({ squadId: squadIdInput });
       }
-
-      window.location.reload();
+      
+      // Removed window.location.reload(). 
+      // Convex is reactive. hasCompletedSetup becomes true in the DB, 
+      // the useQuery updates instantly, and this component unmounts.
     } catch (err) {
       console.error("Setup failed:", err);
       setIsSubmitting(false); 
@@ -79,8 +81,8 @@ export function OnboardingWizard({ user }: { user: any }) {
         </div>
 
         <div className="flex justify-center gap-2 mb-8">
-          {[1, 2, 3].map(i => (
-            <div key={i} className={`h-1.5 rounded-full transition-all duration-500 ${step === i ? "w-12 bg-emerald-500" : step > i ? "w-4 bg-emerald-500/30" : "w-4 bg-neutral-800"}`} />
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className={`h-1.5 rounded-full transition-all duration-500 ${step === i ? "w-10 bg-emerald-500" : step > i ? "w-4 bg-emerald-500/30" : "w-4 bg-neutral-800"}`} />
           ))}
         </div>
 
@@ -127,7 +129,7 @@ export function OnboardingWizard({ user }: { user: any }) {
           {step === 2 && (
             <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6 bg-neutral-900/50 p-6 rounded-3xl border border-neutral-800">
               <h2 className="text-sm font-black uppercase text-emerald-500 tracking-widest flex items-center gap-2"><Users size={16}/> Squad Network</h2>
-              <p className="text-[10px] text-neutral-400 uppercase tracking-widest font-bold leading-relaxed">Enter a shared Squad ID to link your data with an accountability group. You can leave this blank and join later.</p>
+              <p className="text-[10px] text-neutral-400 uppercase tracking-widest font-bold leading-relaxed">Enter a shared Squad ID to link your data with an accountability group. You can leave this blank and join later. (First to join an ID becomes Admin).</p>
               
               <div>
                 <input type="text" placeholder="e.g. alpha-squad" value={squadIdInput} onChange={e => setSquadIdInput(e.target.value)} className="w-full bg-neutral-950 border border-neutral-800 rounded-2xl px-4 py-4 text-white focus:outline-none focus:border-emerald-500 font-mono text-sm" />
@@ -165,9 +167,48 @@ export function OnboardingWizard({ user }: { user: any }) {
               </div>
 
               <div className="flex gap-3 pt-6 border-t border-neutral-800">
-                <button onClick={() => setStep(2)} disabled={isSubmitting} className="px-4 py-4 bg-neutral-800 text-white rounded-2xl hover:bg-neutral-700 transition-colors disabled:opacity-50"><ArrowLeft size={18}/></button>
+                <button onClick={() => setStep(2)} className="px-4 py-4 bg-neutral-800 text-white rounded-2xl hover:bg-neutral-700 transition-colors"><ArrowLeft size={18}/></button>
+                <button onClick={() => setStep(4)} className="flex-1 py-4 bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-black tracking-widest rounded-2xl transition-all uppercase text-xs">Briefing &rarr;</button>
+              </div>
+            </motion.div>
+          )}
+
+          {/* NEW STEP: PROTOCOL BRIEFING (TUTORIAL) */}
+          {step === 4 && (
+            <motion.div key="step4" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6 bg-neutral-900/50 p-6 rounded-3xl border border-neutral-800">
+              <h2 className="text-sm font-black uppercase text-emerald-500 tracking-widest flex items-center gap-2"><BookOpen size={16}/> Protocol Briefing</h2>
+              <p className="text-[10px] text-neutral-400 uppercase tracking-widest font-bold leading-relaxed mb-4">You are about to drop into the Command Center. Here is how to navigate.</p>
+              
+              <div className="space-y-3">
+                <div className="flex items-start gap-3 bg-neutral-950 border border-neutral-800 p-3 rounded-xl">
+                  <Activity size={18} className="text-emerald-500 shrink-0 mt-0.5" />
+                  <div>
+                    <h3 className="text-[10px] font-black text-white uppercase tracking-widest">Command Center</h3>
+                    <p className="text-[9px] text-neutral-500 uppercase tracking-widest mt-1 leading-relaxed">Your main dashboard. Log your 2x45min workouts, water, reading, diet, and progress photo daily.</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-start gap-3 bg-neutral-950 border border-neutral-800 p-3 rounded-xl">
+                  <Users size={18} className="text-emerald-500 shrink-0 mt-0.5" />
+                  <div>
+                    <h3 className="text-[10px] font-black text-white uppercase tracking-widest">Squad Grid</h3>
+                    <p className="text-[9px] text-neutral-500 uppercase tracking-widest mt-1 leading-relaxed">Access via the top right. View your 75-day calendar, lifetime stats, and your squad's live telemetry.</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3 bg-neutral-950 border border-neutral-800 p-3 rounded-xl">
+                  <ShieldCheck size={18} className="text-emerald-500 shrink-0 mt-0.5" />
+                  <div>
+                    <h3 className="text-[10px] font-black text-white uppercase tracking-widest">Settings & Resets</h3>
+                    <p className="text-[9px] text-neutral-500 uppercase tracking-widest mt-1 leading-relaxed">Access via the top left gear. If you compromise the protocol, you reset to Day 1 here.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-6 border-t border-neutral-800">
+                <button onClick={() => setStep(3)} disabled={isSubmitting} className="px-4 py-4 bg-neutral-800 text-white rounded-2xl hover:bg-neutral-700 transition-colors disabled:opacity-50"><ArrowLeft size={18}/></button>
                 <button onClick={completeSetup} disabled={isSubmitting} className="flex-1 py-4 bg-gradient-to-r from-emerald-400 to-emerald-600 text-emerald-950 font-black tracking-widest rounded-2xl transition-all uppercase text-xs shadow-[0_0_20px_rgba(16,185,129,0.3)] flex justify-center items-center">
-                  {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : "Enter Command"}
+                  {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : "Acknowledge & Enter"}
                 </button>
               </div>
             </motion.div>
