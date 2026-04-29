@@ -6,7 +6,7 @@ import { api } from "@/convex/_generated/api";
 import { AnimatePresence, motion } from "framer-motion";
 import { X, Users, Shield, AlertTriangle, CheckCircle } from "lucide-react";
 import { CustomDropdown } from "@/components/features/CustomDropdown";
-import { useClerk } from "@clerk/nextjs";
+import { useClerk, UserProfile } from "@clerk/nextjs";
 
 export function SettingsModal({ user, onClose }: { user: any, onClose: () => void }) {
   const { signOut } = useClerk();
@@ -17,7 +17,7 @@ export function SettingsModal({ user, onClose }: { user: any, onClose: () => voi
   const resetChallenge = useMutation(api.logs.resetChallenge);
   const adminResetSquad = useMutation(api.logs.adminResetSquad);
 
-  const [activeTab, setActiveTab] = useState<"general" | "privacy">("general");
+  const [activeTab, setActiveTab] = useState<"general" | "privacy" | "account">("general");
   const [isResetConfirming, setIsResetConfirming] = useState(false);
   const [isSquadResetConfirming, setIsSquadResetConfirming] = useState(false);
 
@@ -91,9 +91,10 @@ export function SettingsModal({ user, onClose }: { user: any, onClose: () => voi
         </div>
 
         {/* TABS */}
-        <div className="flex gap-2 mb-6 bg-neutral-950 p-1 rounded-2xl border border-neutral-800">
-          <button onClick={() => setActiveTab("general")} className={`flex-1 py-2 text-xs font-bold uppercase tracking-widest rounded-xl transition-all ${activeTab === "general" ? "bg-neutral-800 text-white" : "text-neutral-500 hover:text-neutral-300"}`}>General</button>
-          <button onClick={() => setActiveTab("privacy")} className={`flex-1 py-2 text-xs font-bold uppercase tracking-widest rounded-xl transition-all ${activeTab === "privacy" ? "bg-emerald-500 text-neutral-950" : "text-neutral-500 hover:text-neutral-300"}`}>Privacy</button>
+        <div className="flex gap-2 mb-6 bg-neutral-950 p-1 rounded-2xl border border-neutral-800 flex-wrap sm:flex-nowrap">
+          <button onClick={() => setActiveTab("general")} className={`flex-1 py-2 px-2 text-xs font-bold uppercase tracking-widest rounded-xl transition-all ${activeTab === "general" ? "bg-neutral-800 text-white" : "text-neutral-500 hover:text-neutral-300"}`}>General</button>
+          <button onClick={() => setActiveTab("privacy")} className={`flex-1 py-2 px-2 text-xs font-bold uppercase tracking-widest rounded-xl transition-all ${activeTab === "privacy" ? "bg-emerald-500 text-neutral-950" : "text-neutral-500 hover:text-neutral-300"}`}>Privacy</button>
+          <button onClick={() => setActiveTab("account")} className={`flex-1 py-2 px-2 text-xs font-bold uppercase tracking-widest rounded-xl transition-all ${activeTab === "account" ? "bg-red-500/20 text-red-400" : "text-neutral-500 hover:text-neutral-300"}`}>Account</button>
         </div>
 
         {/* GENERAL TAB */}
@@ -151,7 +152,6 @@ export function SettingsModal({ user, onClose }: { user: any, onClose: () => voi
                 </button>
               )}
 
-              {/* ONLY RENDER SQUAD NUKE IF THEY ARE THE ADMIN */}
               {user?.squadId && user?.isSquadAdmin && (
                 isSquadResetConfirming ? (
                   <div className="bg-orange-500/10 border border-orange-500/30 rounded-2xl p-4 text-center">
@@ -227,6 +227,21 @@ export function SettingsModal({ user, onClose }: { user: any, onClose: () => voi
                 </motion.div>
               )}
             </AnimatePresence>
+          </motion.div>
+        )}
+
+        {/* ACCOUNT TAB (CLERK NATIVE) */}
+        {activeTab === "account" && (
+          <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="space-y-5 overflow-hidden rounded-2xl">
+            <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest mb-2">Manage your authentication and security.</p>
+            <div className="max-h-[60vh] overflow-y-auto hide-scrollbar -mx-4 px-4 flex justify-center">
+               <UserProfile 
+                 appearance={{
+                   variables: { colorBackground: "#0a0a0a", colorText: "white", colorPrimary: "#10b981", colorDanger: "#ef4444" },
+                   elements: { cardBox: "shadow-none w-full max-w-full bg-transparent", navbar: "hidden", pageScrollBox: "p-0" }
+                 }}
+               />
+            </div>
           </motion.div>
         )}
 

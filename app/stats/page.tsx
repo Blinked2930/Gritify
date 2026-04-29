@@ -58,7 +58,8 @@ export default function SquadDirectoryDashboard() {
         
         <div className="max-w-4xl mx-auto space-y-6 relative z-10">
           <div className="flex items-center gap-4 border-b border-neutral-800/50 pb-6 pt-4">
-            <Link href="/" className="bg-neutral-900 border border-neutral-800 hover:border-emerald-500/50 p-3 rounded-full hover:bg-emerald-500/10 transition-all group">
+            {/* CRITICAL FIX: Routing back to /dashboard instead of / */}
+            <Link href="/dashboard" className="bg-neutral-900 border border-neutral-800 hover:border-emerald-500/50 p-3 rounded-full hover:bg-emerald-500/10 transition-all group">
               <ArrowLeft className="w-5 h-5 text-neutral-400 group-hover:text-emerald-400 transition-colors" />
             </Link>
             <div>
@@ -157,7 +158,6 @@ export default function SquadDirectoryDashboard() {
   const challengeStart = targetUser.challengeStartDate ? new Date(targetUser.challengeStartDate) : new Date(0);
   challengeStart.setHours(0,0,0,0);
 
-  // Split logs into Current Streak vs Historical Vault
   const currentLogs = allTargetLogs.filter((l: any) => new Date(l.date) >= challengeStart);
   const historyLogs = allTargetLogs.filter((l: any) => new Date(l.date) < challengeStart).sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
@@ -196,7 +196,6 @@ export default function SquadDirectoryDashboard() {
     return isHistory ? "history_pending" : "pending"; 
   };
 
-  // Build the 75 blocks for the current attempt
   const calendarBlocks = Array.from({ length: 75 }).map((_, i) => {
     const dayNum = i + 1;
     const sortedLogs = [...currentLogs].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
@@ -345,7 +344,6 @@ export default function SquadDirectoryDashboard() {
                   if (state === "history_success") blockBg = "bg-emerald-950/20 border-emerald-900/30 text-emerald-600/50";
                   if (state === "failed") blockBg = "bg-red-950/20 border-red-900/30 text-red-600/50";
 
-                  // Extract just the day/month for a tiny label
                   const dateObj = new Date(log.date);
                   const dateLabel = `${dateObj.getMonth()+1}/${dateObj.getDate()}`;
 
