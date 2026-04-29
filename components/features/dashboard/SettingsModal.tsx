@@ -4,12 +4,13 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { AnimatePresence, motion } from "framer-motion";
-import { X, Users, Shield, AlertTriangle, CheckCircle } from "lucide-react";
+import { X, Users, Shield, AlertTriangle, CheckCircle, User } from "lucide-react";
 import { CustomDropdown } from "@/components/features/CustomDropdown";
-import { useClerk, UserProfile } from "@clerk/nextjs";
+import { useClerk, useUser } from "@clerk/nextjs";
 
 export function SettingsModal({ user, onClose }: { user: any, onClose: () => void }) {
   const { signOut } = useClerk();
+  const { user: clerkUser } = useUser();
   
   const squadMembers = useQuery(api.logs.getSquadMembers) || [];
   const updateSettings = useMutation(api.logs.updateUserSettings);
@@ -20,13 +21,19 @@ export function SettingsModal({ user, onClose }: { user: any, onClose: () => voi
   const [activeTab, setActiveTab] = useState<"general" | "privacy" | "account">("general");
   const [isResetConfirming, setIsResetConfirming] = useState(false);
   const [isSquadResetConfirming, setIsSquadResetConfirming] = useState(false);
+  const [isAccountDeleteConfirming, setIsAccountDeleteConfirming] = useState(false);
 
+  // General Settings State
   const [vesselSizeInput, setVesselSizeInput] = useState("128");
   const [vesselUnitInput, setVesselUnitInput] = useState<"oz" | "ml" | "liters">("oz");
   const [bodyWeightInput, setBodyWeightInput] = useState("160");
   const [weightUnitInput, setWeightUnitInput] = useState<"lbs" | "kg">("lbs");
   const [squadIdInput, setSquadIdInput] = useState("");
   
+  // Account Settings State
+  const [firstNameInput, setFirstNameInput] = useState("");
+  const [lastNameInput, setLastNameInput] = useState("");
+
   const [privacySettings, setPrivacySettings] = useState<{
     shareWorkouts: "everyone" | "close_friends" | "none";
     shareWater: "everyone" | "close_friends" | "none";
@@ -44,6 +51,7 @@ export function SettingsModal({ user, onClose }: { user: any, onClose: () => voi
   });
 
   useEffect(() => {
+    // Populate Convex Data
     if (user?.vesselSize) setVesselSizeInput(user.vesselSize.toString());
     if (user?.vesselUnit) setVesselUnitInput(user.vesselUnit as any);
     if (user?.bodyWeight) setBodyWeightInput(user.bodyWeight.toString());
@@ -61,9 +69,16 @@ export function SettingsModal({ user, onClose }: { user: any, onClose: () => voi
         closeFriends: user.privacySettings.closeFriends || []
       });
     }
-  }, [user]);
+
+    // Populate Clerk Data
+    if (clerkUser) {
+      setFirstNameInput(clerkUser.firstName || "");
+      setLastNameInput(clerkUser.lastName || "");
+    }
+  }, [user, clerkUser]);
 
   const handleSave = async () => {
+    // Save Convex Metrics
     const parsed = parseFloat(vesselSizeInput);
     const bwParsed = parseFloat(bodyWeightInput);
     if (!isNaN(parsed) && parsed > 0) {
@@ -77,19 +92,33 @@ export function SettingsModal({ user, onClose }: { user: any, onClose: () => voi
     if (squadIdInput !== (user?.squadId || "")) {
       await joinSquad({ squadId: squadIdInput });
     }
+
+    // Save Clerk Name Updates
+    if (clerkUser && (firstNameInput !== clerkUser.firstName || lastNameInput !== clerkUser.lastName)) {
+      await clerkUser.update({ firstName: firstNameInput, lastName: lastNameInput });
+    }
+
     onClose();
+  };
+
+  const handleDeleteAccount = async () => {
+    try {
+      await clerkUser?.delete();
+      // NextJS & Clerk will automatically kick the user to the landing page
+    } catch (e) {
+      console.error("Failed to delete account:", e);
+    }
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/90 backdrop-blur-sm" onClick={onClose} />
       
-      {/* CRITICAL FIX: Dynamic max-width based on active tab so Clerk has room to breathe */}
       <motion.div 
         initial={{ scale: 0.95, opacity: 0 }} 
         animate={{ scale: 1, opacity: 1 }} 
         exit={{ scale: 0.95, opacity: 0 }} 
-        className={`bg-neutral-900 border border-neutral-800 p-6 rounded-3xl shadow-2xl relative z-10 w-full max-h-[90vh] overflow-y-auto hide-scrollbar flex flex-col transition-all duration-300 ${activeTab === 'account' ? 'max-w-4xl' : 'max-w-sm'}`}
+        className="bg-neutral-900 border border-neutral-800 p-6 rounded-3xl shadow-2xl relative z-10 w-full max-w-sm max-h-[90vh] overflow-y-auto hide-scrollbar flex flex-col"
       >
         
         <div className="flex justify-between items-center mb-6">
@@ -238,42 +267,58 @@ export function SettingsModal({ user, onClose }: { user: any, onClose: () => voi
           </motion.div>
         )}
 
-        {/* ACCOUNT TAB (CLERK NATIVE) */}
+        {/* ACCOUNT TAB (CUSTOM GRITIFY UI) */}
         {activeTab === "account" && (
-          <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="w-full flex justify-center">
-             <UserProfile 
-               appearance={{
-                 variables: { 
-                   colorBackground: "#171717", // Neutral-900 to match the modal
-                   colorText: "white", 
-                   colorPrimary: "#10b981", // Emerald-500
-                   colorDanger: "#ef4444",
-                   colorInputBackground: "#0a0a0a", // Neutral-950
-                   colorInputText: "white",
-                 },
-                 elements: { 
-                   rootBox: "w-full",
-                   cardBox: "shadow-none w-full max-w-full bg-transparent border border-neutral-800 rounded-xl", 
-                   navbar: "hidden md:block border-r border-neutral-800",
-                   headerTitle: "text-white",
-                   headerSubtitle: "text-neutral-400",
-                   profileSectionTitleText: "text-emerald-500",
-                 }
-               }}
-             />
+          <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
+            <div className="space-y-4">
+              <h3 className="text-xs font-bold text-emerald-500 uppercase tracking-widest border-b border-neutral-800 pb-2 flex items-center gap-2"><User size={14}/> Identity</h3>
+              
+              <div>
+                <label className="block text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-2">Email Address</label>
+                <div className="w-full bg-neutral-950/50 border border-neutral-800/50 rounded-2xl px-4 py-3 text-neutral-500 font-mono text-sm cursor-not-allowed">
+                  {clerkUser?.primaryEmailAddress?.emailAddress || "Loading..."}
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <label className="block text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-2">First Name</label>
+                  <input type="text" value={firstNameInput} onChange={e => setFirstNameInput(e.target.value)} className="w-full bg-neutral-950 border border-neutral-800 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500 font-mono text-sm" />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-2">Last Name</label>
+                  <input type="text" value={lastNameInput} onChange={e => setLastNameInput(e.target.value)} className="w-full bg-neutral-950 border border-neutral-800 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500 font-mono text-sm" />
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-6 border-t border-red-500/20 mt-6 space-y-3">
+              {isAccountDeleteConfirming ? (
+                <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-4 text-center">
+                  <AlertTriangle className="w-6 h-6 text-red-500 mx-auto mb-2" />
+                  <p className="text-[10px] text-red-400 uppercase tracking-widest font-bold mb-3">This permanently destroys your account and all telemetry. Are you sure?</p>
+                  <div className="flex gap-2">
+                    <button onClick={() => setIsAccountDeleteConfirming(false)} className="flex-1 py-3 bg-neutral-800 text-white rounded-xl text-xs font-black uppercase tracking-widest">Cancel</button>
+                    <button onClick={handleDeleteAccount} className="flex-1 py-3 bg-red-600 text-white rounded-xl text-xs font-black uppercase tracking-widest">Destroy</button>
+                  </div>
+                </div>
+              ) : (
+                <button onClick={() => setIsAccountDeleteConfirming(true)} className="w-full py-4 border border-red-500/30 hover:bg-red-500/10 text-red-500 font-black tracking-widest rounded-2xl transition-all uppercase text-[10px]">
+                  Delete Account Permanently
+                </button>
+              )}
+            </div>
           </motion.div>
         )}
 
         <div className="pt-6 mt-auto border-t border-neutral-800">
-          {/* Clerk auto-saves, so we hide the Gritify save button when managing the account */}
-          {activeTab !== "account" && (
-            <button 
-              onClick={handleSave}
-              className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-black tracking-widest rounded-2xl transition-all uppercase text-[11px] shadow-[0_0_20px_rgba(16,185,129,0.2)] mb-3"
-            >
-              Save Settings
-            </button>
-          )}
+          <button 
+            onClick={handleSave}
+            className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-black tracking-widest rounded-2xl transition-all uppercase text-[11px] shadow-[0_0_20px_rgba(16,185,129,0.2)] mb-3"
+          >
+            Save Settings
+          </button>
+          
           <button 
             onClick={() => signOut({ redirectUrl: '/' })}
             className="w-full py-4 bg-transparent border border-neutral-800 hover:bg-neutral-800 text-neutral-500 font-black tracking-widest rounded-2xl transition-all uppercase text-[11px]"
