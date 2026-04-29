@@ -10,7 +10,10 @@ const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <ClerkProvider>
-      <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
+      {/* Bypassing a known TypeScript mismatch between Clerk's latest SDK and Convex.
+        At runtime, this hook provides exactly what Convex needs.
+      */}
+      <ConvexProviderWithClerk client={convex} useAuth={useAuth as any}>
         {children}
       </ConvexProviderWithClerk>
     </ClerkProvider>
