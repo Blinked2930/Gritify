@@ -2,7 +2,7 @@
   "name": "Gritify Command",
   "short_name": "Gritify",
   "description": "75 Hard Protocol & Squad Telemetry",
-  "start_url": "/dashboard",
+  "start_url": "/",
   "display": "standalone",
   "background_color": "#0a0a0a",
   "theme_color": "#0a0a0a",
@@ -10,6 +10,12 @@
     {
       "src": "/icon-192x192.png",
       "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
