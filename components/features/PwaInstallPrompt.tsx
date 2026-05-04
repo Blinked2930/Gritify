@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { Share, PlusSquare, MoreVertical, MoreHorizontal, Smartphone, Apple, X, Check } from 'lucide-react';
+import { useUser } from "@clerk/nextjs";
 
 export function PwaInstallPrompt({ onBypass }: { onBypass?: () => void }) {
+  const { isSignedIn, isLoaded } = useUser();
   const [device, setDevice] = useState<'none' | 'ios' | 'android'>('none');
   const [isStandalone, setIsStandalone] = useState(true); 
 
@@ -27,7 +29,8 @@ export function PwaInstallPrompt({ onBypass }: { onBypass?: () => void }) {
     if (onBypass) onBypass();
   };
 
-  if (isStandalone) return null;
+  // CRITICAL: Only render the install prompt AFTER the user has authenticated
+  if (!isLoaded || !isSignedIn || isStandalone) return null;
 
   return (
     <div className="fixed inset-0 bg-neutral-950/95 backdrop-blur-md z-[9999] flex flex-col items-center justify-center p-6 animate-in fade-in duration-300">
@@ -36,9 +39,9 @@ export function PwaInstallPrompt({ onBypass }: { onBypass?: () => void }) {
         <Smartphone size={32} className="text-emerald-500" />
       </div>
       
-      <h1 className="text-3xl font-black text-white mb-3 tracking-tight uppercase">Install Protocol</h1>
+      <h1 className="text-3xl font-black text-white mb-3 tracking-tight uppercase text-center">Protocol Initialized</h1>
       <p className="text-neutral-400 text-center text-sm font-medium leading-relaxed max-w-xs mb-10">
-        To ensure maximum telemetry reliability and native performance, this tool must be installed directly to your device.
+        Account secured. To ensure maximum telemetry reliability and native performance, this tool must now be installed directly to your device.
       </p>
 
       {device === 'none' ? (
