@@ -4,7 +4,7 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useState, useRef } from "react";
 import { AnimatePresence } from "framer-motion";
-import { Camera, Settings, Plus, Minus, CheckCircle, Droplet, BookOpen, Users, Flame, Activity, ShieldCheck, Dumbbell } from "lucide-react";
+import { Camera, Settings, CheckCircle, Droplet, BookOpen, Users, Flame, Activity, ShieldCheck, Dumbbell } from "lucide-react";
 import Link from "next/link";
 import { OnboardingWizard } from "@/components/features/dashboard/OnboardingWizard";
 import { SettingsModal } from "@/components/features/dashboard/SettingsModal";
@@ -74,9 +74,19 @@ function DashboardMain({ user }: { user: any }) {
     currentDay = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
   }
 
-  const handleAddWater = () => {
-    const currentTotal = log?.waterTotal || 0;
-    updateLog({ waterTotal: currentTotal + 1 });
+  // NEW HYDRATION LOGIC: Converts input amount into vessel fractions for the database
+  const handleAddWaterAmount = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const amount = Number(formData.get("waterAmount"));
+    if (amount !== 0) {
+      const currentVessels = log?.waterTotal || 0;
+      const vesselSize = user?.vesselSize || 128;
+      const addedVessels = amount / vesselSize;
+      
+      updateLog({ waterTotal: Math.max(0, currentVessels + addedVessels) });
+      e.currentTarget.reset(); // Resets back to the defaultValue (vesselSize)
+    }
   };
   
   const handleAddPages = (e: React.FormEvent<HTMLFormElement>) => {
@@ -207,12 +217,24 @@ function DashboardMain({ user }: { user: any }) {
               <span className="text-5xl font-black tracking-tighter text-white">{currentWaterAmountStr.toFixed(user?.vesselUnit === "liters" ? 2 : 0)}</span>
               <span className="text-sm font-bold text-neutral-500 mb-1">/ {waterTarget}</span>
             </div>
-            <div className="flex items-center gap-3">
-              <button onClick={() => updateLog({ waterTotal: Math.max(0, (log?.waterTotal || 0) - 1) })} className="w-14 h-14 rounded-full bg-neutral-900 border border-neutral-800 flex items-center justify-center text-neutral-400 hover:border-neutral-600 transition-all active:scale-90"><Minus size={20} /></button>
-              <button onClick={handleAddWater} className={`w-14 h-14 rounded-full flex items-center justify-center transition-all active:scale-90 ${isWaterMet ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-emerald-500 text-neutral-950 shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:bg-emerald-400'}`}>
-                {isWaterMet ? <CheckCircle size={22} /> : <Plus size={24} />}
+            
+            <form onSubmit={handleAddWaterAmount} className="flex gap-2 w-1/2">
+              <input 
+                type="number" 
+                name="waterAmount" 
+                required 
+                defaultValue={user?.vesselSize || 128} 
+                className="w-16 bg-neutral-950 border border-neutral-800 rounded-2xl px-2 py-3 text-center text-neutral-200 font-bold focus:outline-none focus:border-emerald-500 transition-colors" 
+              />
+              <button 
+                type="submit" 
+                className={`flex-1 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all active:scale-95 ${
+                  isWaterMet ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-emerald-500 text-neutral-950 shadow-[0_0_15px_rgba(16,185,129,0.2)] hover:bg-emerald-400'
+                }`}
+              >
+                Log
               </button>
-            </div>
+            </form>
           </div>
         </div>
 
@@ -232,8 +254,21 @@ function DashboardMain({ user }: { user: any }) {
               <span className="text-sm font-bold text-neutral-500 mb-1">/ {readingGoal}</span>
             </div>
             <form onSubmit={handleAddPages} className="flex gap-2 w-1/2">
-              <input type="number" name="pages" required defaultValue={readingGoal} className="w-16 bg-neutral-950 border border-neutral-800 rounded-2xl px-2 py-3 text-center text-neutral-200 font-bold focus:outline-none focus:border-emerald-500 transition-colors" />
-              <button type="submit" className={`flex-1 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all active:scale-95 ${isPagesMet ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-emerald-500 text-neutral-950 shadow-[0_0_15px_rgba(16,185,129,0.2)] hover:bg-emerald-400'}`}>Log</button>
+              <input 
+                type="number" 
+                name="pages" 
+                required 
+                defaultValue={readingGoal} 
+                className="w-16 bg-neutral-950 border border-neutral-800 rounded-2xl px-2 py-3 text-center text-neutral-200 font-bold focus:outline-none focus:border-emerald-500 transition-colors" 
+              />
+              <button 
+                type="submit" 
+                className={`flex-1 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all active:scale-95 ${
+                  isPagesMet ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-emerald-500 text-neutral-950 shadow-[0_0_15px_rgba(16,185,129,0.2)] hover:bg-emerald-400'
+                }`}
+              >
+                Log
+              </button>
             </form>
           </div>
         </div>
@@ -246,13 +281,30 @@ function DashboardMain({ user }: { user: any }) {
           <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest mb-5">Diet followed. No alcohol. Photo taken.</p>
           
           <div className="grid grid-cols-2 gap-3">
-            <button onClick={() => updateLog({ diet: log?.diet === false ? true : false })} className={`py-4 rounded-2xl border transition-all font-black text-[10px] uppercase tracking-widest active:scale-95 flex flex-col items-center justify-center gap-2 ${log?.diet ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30" : "bg-neutral-950 text-neutral-400 border-neutral-800 hover:border-emerald-500/50"}`}>
+            <button 
+              onClick={() => updateLog({ diet: !log?.diet })} 
+              className={`py-4 rounded-2xl border transition-all font-black text-[10px] uppercase tracking-widest active:scale-95 flex flex-col items-center justify-center gap-2 ${
+                log?.diet ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30" : "bg-neutral-950 text-neutral-400 border-neutral-800 hover:border-emerald-500/50"
+              }`}
+            >
               {log?.diet ? <CheckCircle size={20} /> : <div className="w-5 h-5 border-2 border-neutral-600 rounded-full" />} Diet Perfect
             </button>
             
             <input type="file" accept="image/*" ref={fileInputRef} className="hidden" onChange={handlePhotoUpload} />
-            <button onClick={() => fileInputRef.current?.click()} disabled={isPhotoUploading} className={`py-4 rounded-2xl border transition-all font-black text-[10px] uppercase tracking-widest active:scale-95 flex flex-col items-center justify-center gap-2 ${log?.photoStorageId ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30" : "bg-neutral-950 text-neutral-400 border-neutral-800 hover:border-emerald-500/50"}`}>
-              {isPhotoUploading ? <span className="animate-pulse flex flex-col items-center gap-2"><Camera size={20} /> Uploading...</span> : log?.photoUrl ? <><CheckCircle size={20} /> Photo Secured</> : <><Camera size={20} className="text-neutral-500" /> Upload Photo</>}
+            <button 
+              onClick={() => fileInputRef.current?.click()} 
+              disabled={isPhotoUploading} 
+              className={`py-4 rounded-2xl border transition-all font-black text-[10px] uppercase tracking-widest active:scale-95 flex flex-col items-center justify-center gap-2 ${
+                log?.photoStorageId ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30" : "bg-neutral-950 text-neutral-400 border-neutral-800 hover:border-emerald-500/50"
+              }`}
+            >
+              {isPhotoUploading ? (
+                <span className="animate-pulse flex flex-col items-center gap-2"><Camera size={20} /> Uploading...</span>
+              ) : log?.photoUrl ? (
+                <><CheckCircle size={20} /> Photo Secured</>
+              ) : (
+                <><Camera size={20} className="text-neutral-500" /> Upload Photo</>
+              )}
             </button>
           </div>
         </div>
