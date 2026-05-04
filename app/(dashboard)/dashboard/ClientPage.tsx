@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { AnimatePresence } from "framer-motion";
 import { Camera, Settings, CheckCircle, Droplet, BookOpen, Users, Flame, Activity, ShieldCheck, Dumbbell } from "lucide-react";
 import Link from "next/link";
@@ -52,6 +52,14 @@ function DashboardMain({ user }: { user: any }) {
   const [isPhotoUploading, setIsPhotoUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [workoutPanelOpen, setWorkoutPanelOpen] = useState<"workout1" | "workout2" | null>(null);
+
+  // Controlled state for water input so it dynamically matches the user's settings profile
+  const [waterInputAmount, setWaterInputAmount] = useState<string>(String(user?.vesselSize || 128));
+
+  // If the user updates their vessel size in the settings modal, update the local input instantly
+  useEffect(() => {
+    setWaterInputAmount(String(user?.vesselSize || 128));
+  }, [user?.vesselSize]);
   
   if (log === undefined) {
     return (
@@ -74,18 +82,14 @@ function DashboardMain({ user }: { user: any }) {
     currentDay = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
   }
 
-  // NEW HYDRATION LOGIC: Converts input amount into vessel fractions for the database
   const handleAddWaterAmount = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const amount = Number(formData.get("waterAmount"));
+    const amount = Number(waterInputAmount);
     if (amount !== 0) {
-      const currentVessels = log?.waterTotal || 0;
-      const vesselSize = user?.vesselSize || 128;
-      const addedVessels = amount / vesselSize;
-      
-      updateLog({ waterTotal: Math.max(0, currentVessels + addedVessels) });
-      e.currentTarget.reset(); // Resets back to the defaultValue (vesselSize)
+      const currentAbsoluteTotal = log?.waterTotal || 0;
+      updateLog({ waterTotal: Math.max(0, currentAbsoluteTotal + amount) });
+      // Reset back to their default vessel size after logging
+      setWaterInputAmount(String(user?.vesselSize || 128));
     }
   };
   
@@ -120,9 +124,11 @@ function DashboardMain({ user }: { user: any }) {
     }
   };
 
-  const currentWaterAmountStr = log ? ((log?.waterTotal || 0) * (user?.vesselSize || 128)) : 0;
+  // Log waterTotal is now ABSOLUTE. No multiplier needed.
+  const currentWaterAmountStr = log?.waterTotal || 0;
   const waterTarget = user?.vesselUnit === "liters" ? 3.78 : user?.vesselUnit === "ml" ? 3785 : 128;
   const isWaterMet = currentWaterAmountStr >= waterTarget;
+  
   const readingGoal = user?.dailyReadingGoal || 10; 
   const isPagesMet = log ? (log?.readingTotal || 0) >= readingGoal : false;
   const isW1Met = log?.workout1?.done;
@@ -221,9 +227,9 @@ function DashboardMain({ user }: { user: any }) {
             <form onSubmit={handleAddWaterAmount} className="flex gap-2 w-1/2">
               <input 
                 type="number" 
-                name="waterAmount" 
+                value={waterInputAmount}
+                onChange={(e) => setWaterInputAmount(e.target.value)}
                 required 
-                defaultValue={user?.vesselSize || 128} 
                 className="w-16 bg-neutral-950 border border-neutral-800 rounded-2xl px-2 py-3 text-center text-neutral-200 font-bold focus:outline-none focus:border-emerald-500 transition-colors" 
               />
               <button 
