@@ -176,7 +176,6 @@ export const adminResetSquad = mutation({
     try {
       const user = await getOrCreateUser(ctx);
       
-      // SECURITY LOCK: Only Admins can nuke the squad
       if (!user.isSquadAdmin) {
         throw new ConvexError("UNAUTHORIZED: Only the Squad Admin can nuke the protocol.");
       }
@@ -208,19 +207,16 @@ export const joinSquad = mutation({
       const user = await getOrCreateUser(ctx);
       const cleanId = args.squadId.trim().toLowerCase();
       
-      // If leaving a squad entirely
       if (cleanId === "") {
         await ctx.db.patch(user._id, { squadId: undefined, isSquadAdmin: false });
         return;
       }
 
-      // Check if squad exists to assign Admin rights
       const existingMembers = await ctx.db
         .query("users")
         .withIndex("by_squad", (q) => q.eq("squadId", cleanId))
         .collect();
       
-      // First person to join an ID gets Admin keys
       const isAdmin = existingMembers.length === 0;
 
       await ctx.db.patch(user._id, {
@@ -280,7 +276,7 @@ export const updateLog = mutation({
         workout2: args.workout2 ? { done: args.workout2.done, notes: args.workout2.notes || "", cals: args.workout2.cals || 0 } : { done: args.workout2Done ?? false, notes: "", cals: 0 },
         waterTotal: args.waterTotal ?? 0,
         readingTotal: args.readingTotal ?? 0,
-        diet: args.diet ?? true,
+        diet: args.diet ?? false,
         photoStorageId: args.photoStorageId,
         qAndA: args.qAndA ?? [],
         status: "on_time",
@@ -300,15 +296,23 @@ export const updateLog = mutation({
       logId = existingLog._id;
     }
 
-    let actionType = "Updated their log";
+    // --- ABSOLUTE HYDRATION NOTIFICATION LOGIC ---
+    const waterTarget = user.vesselUnit === "liters" ? 3.78 : user.vesselUnit === "ml" ? 3785 : 128;
+    const prevWater = existingLog ? (existingLog.waterTotal || 0) : 0;
+    const newWater = args.waterTotal !== undefined ? args.waterTotal : prevWater;
+    
+    // Only fire if this specific update crossed the finish line
+    const justHitWaterGoal = prevWater < waterTarget && newWater >= waterTarget;
+
+    let actionType = null;
     if (args.workout1 !== undefined || args.workout1Done !== undefined) actionType = "Logged an Outdoor Workout";
     else if (args.workout2 !== undefined || args.workout2Done !== undefined) actionType = "Logged an Indoor Workout";
     else if (args.photoStorageId !== undefined) actionType = "Secured the Progress Photo";
     else if (args.readingTotal !== undefined) actionType = "Logged Reading Pages";
-    else if (args.waterTotal !== undefined) actionType = "Logged Hydration";
+    else if (justHitWaterGoal) actionType = "Hit the Daily Hydration Goal! 💧";
     else if (args.diet !== undefined) actionType = args.diet ? "Locked in the Diet" : "Slipped on the Diet";
     
-    if (user.squadId) {
+    if (actionType && user.squadId) {
       await ctx.scheduler.runAfter(0, (internal as any).push.notifyPartnerAction, {
         userId: user._id,
         userName: user.name,
@@ -326,14 +330,15 @@ export const getGlobalAggregates = query({
     const user = await getUser(ctx);
     if (!user || (user._id as string) === "pending_jit_user") return null;
 
-    const computeStats = (logs: any[], vesselSize: number) => {
+    const computeStats = (logs: any[]) => {
       let totalWater = 0;
       let totalPages = 0;
       let totalCals = 0;
       let workoutCount = 0;
       
       logs.forEach(l => {
-        totalWater += (l.waterTotal || 0) * vesselSize;
+        // Water is now absolute, no longer multiplied by vesselSize
+        totalWater += (l.waterTotal || 0);
         totalPages += (l.readingTotal || 0);
         totalCals += (l.workout1?.cals || 0) + (l.workout2?.cals || 0);
         if (l.workout1?.done) workoutCount++;
@@ -377,14 +382,14 @@ export const getGlobalAggregates = query({
         
         return {
           user: member,
-          stats: computeStats(memberLogsRaw, member.vesselSize),
+          stats: computeStats(memberLogsRaw),
           logs: memberLogs
         };
       }));
     }
 
     return {
-      userStats: computeStats(userLogsRaw, user.vesselSize),
+      userStats: computeStats(userLogsRaw),
       userLogs,
       squad: squadArray 
     };
