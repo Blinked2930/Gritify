@@ -4,7 +4,7 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { ArrowLeft, Flame, Droplet, BookOpen, Activity, Loader2, Utensils, ShieldAlert, User, CheckCircle, Camera, X, History } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
 // UNIVERSAL TRANSLATOR: Converts any water amount from the logger's unit to the viewer's unit
@@ -24,7 +24,7 @@ const convertWater = (amount: number, fromUnit: string, toUnit: string) => {
   if (to === "oz") return baseMl / 29.5735;
   if (to === "liters") return baseMl / 1000;
   
-  return baseMl; // Default return in ml if requested
+  return baseMl; 
 };
 
 export default function SquadDirectoryDashboard() {
@@ -34,6 +34,42 @@ export default function SquadDirectoryDashboard() {
   const [selectedUserDetailed, setSelectedUserDetailed] = useState<any | null>(null);
   const [selectedLogDay, setSelectedLogDay] = useState<any | null>(null);
   const [expandedPhotoUrl, setExpandedPhotoUrl] = useState<string | null>(null);
+
+  // --- NATIVE HISTORY MANAGEMENT ---
+  // Pushes a dummy state to the browser history so mobile swipe-back works naturally
+  const openUserDetail = (member: any) => {
+    window.history.pushState({ view: 'user_detail' }, "");
+    setSelectedUserDetailed(member);
+  };
+
+  const openLogDay = (logData: any) => {
+    window.history.pushState({ view: 'log_day' }, "");
+    setSelectedLogDay(logData);
+  };
+
+  const openPhotoUrl = (url: string) => {
+    window.history.pushState({ view: 'photo' }, "");
+    setExpandedPhotoUrl(url);
+  };
+
+  const handleCloseModal = () => {
+    window.history.back(); // This triggers the popstate listener below
+  };
+
+  useEffect(() => {
+    const handlePopState = () => {
+      // Gracefully peel back layers of UI depending on what is open
+      if (expandedPhotoUrl) {
+        setExpandedPhotoUrl(null);
+      } else if (selectedLogDay) {
+        setSelectedLogDay(null);
+      } else if (selectedUserDetailed) {
+        setSelectedUserDetailed(null);
+      }
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [expandedPhotoUrl, selectedLogDay, selectedUserDetailed]);
 
   if (data === undefined || me === undefined) {
     return (
@@ -95,7 +131,6 @@ export default function SquadDirectoryDashboard() {
               const todayLog = getTodayLogForUser(member.logs || []);
               const u = member.user;
               
-              // Determine success state using the target user's native unit parameters
               const waterTarget = u?.vesselUnit === "liters" ? 3.78 : u?.vesselUnit === "ml" ? 3785 : 128;
               const currentWater = todayLog ? (todayLog?.waterTotal || 0) : 0;
               
@@ -112,7 +147,7 @@ export default function SquadDirectoryDashboard() {
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: idx * 0.05 }}
-                  onClick={() => setSelectedUserDetailed(member)}
+                  onClick={() => openUserDetail(member)}
                   className={`w-full bg-neutral-900/60 backdrop-blur-md border rounded-3xl p-5 text-left relative overflow-hidden group transition-all flex flex-col gap-4 ${member.isMe ? 'border-emerald-500/30' : 'border-neutral-800'}`}
                 >
                   <div className="flex justify-between items-center w-full">
@@ -232,7 +267,7 @@ export default function SquadDirectoryDashboard() {
       <div className="max-w-4xl mx-auto space-y-8 relative z-10">
         
         <div className="flex items-center gap-4 border-b border-neutral-800/50 pb-6 pt-4">
-          <button onClick={() => setSelectedUserDetailed(null)} className="bg-neutral-900 border border-neutral-800 hover:border-emerald-500/50 p-3 rounded-full hover:bg-emerald-500/10 transition-all group">
+          <button onClick={handleCloseModal} className="bg-neutral-900 border border-neutral-800 hover:border-emerald-500/50 p-3 rounded-full hover:bg-emerald-500/10 transition-all group">
             <ArrowLeft className="w-5 h-5 text-neutral-400 group-hover:text-emerald-400 transition-colors" />
           </button>
           <div>
@@ -265,7 +300,6 @@ export default function SquadDirectoryDashboard() {
               )}
             </div>
 
-            {/* CRITICAL FEATURE: Universal Translation. Convert partner's raw water into my native unit */}
             <div className="bg-neutral-900/40 border border-neutral-800 p-5 rounded-2xl">
               <p className="flex items-center text-neutral-500 text-[10px] font-bold uppercase tracking-widest mb-1 gap-1"><Droplet size={12} className="text-blue-500" /> Water ({myUnit})</p>
               {canViewWater ? (
@@ -320,7 +354,7 @@ export default function SquadDirectoryDashboard() {
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: (idx % 14) * 0.02 }}
                     disabled={block.state === "future"}
-                    onClick={() => block.log && setSelectedLogDay({ ...block.log, dayNum: block.dayNum })}
+                    onClick={() => block.log && openLogDay({ ...block.log, dayNum: block.dayNum })}
                     className={`relative w-full aspect-square rounded-xl border flex flex-col items-center justify-center transition-all duration-300 font-extrabold text-xs sm:text-sm tracking-tighter ${blockBg} overflow-hidden`}
                   >
                     <span className="relative z-20 mb-2">{block.dayNum}</span>
@@ -368,7 +402,7 @@ export default function SquadDirectoryDashboard() {
                   return (
                     <button 
                       key={log._id}
-                      onClick={() => setSelectedLogDay({ ...log, dayNum: "Legacy" })}
+                      onClick={() => openLogDay({ ...log, dayNum: "Legacy" })}
                       className={`flex-shrink-0 w-12 h-14 sm:w-14 sm:h-16 relative rounded-xl border flex flex-col items-center justify-center transition-all ${blockBg} overflow-hidden hover:border-neutral-600`}
                     >
                       <span className="relative z-20 text-[9px] sm:text-[10px] font-black tracking-widest mb-2 opacity-50">{dateLabel}</span>
@@ -394,7 +428,7 @@ export default function SquadDirectoryDashboard() {
       <AnimatePresence>
         {selectedLogDay && (
           <div className="fixed inset-0 z-40 flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setSelectedLogDay(null)} />
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={handleCloseModal} />
             <motion.div 
               initial={{ scale: 0.95, opacity: 0, y: 20 }} 
               animate={{ scale: 1, opacity: 1, y: 0 }} 
@@ -406,14 +440,13 @@ export default function SquadDirectoryDashboard() {
                   <h2 className="text-2xl font-black text-white uppercase tracking-tighter">Day {selectedLogDay?.dayNum}</h2>
                   <p className="text-emerald-500 font-bold text-xs tracking-widest uppercase mt-1">{selectedLogDay?.date}</p>
                 </div>
-                <button onClick={() => setSelectedLogDay(null)} className="p-2 bg-neutral-800 rounded-full text-neutral-400 hover:text-white transition-colors">
+                <button onClick={handleCloseModal} className="p-2 bg-neutral-800 rounded-full text-neutral-400 hover:text-white transition-colors">
                   <ArrowLeft className="w-5 h-5 rotate-[-45deg]" />
                 </button>
               </div>
               
               <div className="space-y-4">
                 <div className="grid grid-cols-3 gap-2 mb-4">
-                  {/* CRITICAL FIX: Convert target's specific daily log into my unit */}
                   <div className="bg-neutral-950 border border-neutral-800/80 p-3 rounded-xl flex flex-col items-center justify-center gap-1">
                     <Droplet size={14} className={(selectedLogDay?.waterTotal || 0) > 0 ? "text-blue-500" : "text-neutral-600"} />
                     {canViewWater ? (
@@ -428,7 +461,6 @@ export default function SquadDirectoryDashboard() {
                     )}
                   </div>
 
-                  {/* Reading Block */}
                   <div className="bg-neutral-950 border border-neutral-800/80 p-3 rounded-xl flex flex-col items-center justify-center gap-1">
                     <BookOpen size={14} className={(selectedLogDay?.readingTotal || 0) > 0 ? "text-amber-500" : "text-neutral-600"} />
                     {canViewReading ? (
@@ -441,7 +473,6 @@ export default function SquadDirectoryDashboard() {
                     )}
                   </div>
 
-                  {/* Diet Block */}
                   <div className="bg-neutral-950 border border-neutral-800/80 p-3 rounded-xl flex flex-col items-center justify-center gap-1">
                     <Utensils size={14} className={selectedLogDay?.diet ? "text-emerald-500" : "text-red-500"} />
                     {canViewDiet ? (
@@ -500,7 +531,7 @@ export default function SquadDirectoryDashboard() {
                   {selectedLogDay?.photoStorageId && (
                     canViewPhotos && selectedLogDay?.photoUrl ? (
                       <div 
-                        onClick={() => setExpandedPhotoUrl(selectedLogDay.photoUrl)}
+                        onClick={() => openPhotoUrl(selectedLogDay.photoUrl)}
                         className="mt-3 relative w-full h-48 rounded-lg overflow-hidden border border-neutral-800 cursor-pointer group/img"
                       >
                         <img src={selectedLogDay.photoUrl} alt="Progress" className="w-full h-full object-cover transition-transform duration-500 group-hover/img:scale-105" />
@@ -532,7 +563,7 @@ export default function SquadDirectoryDashboard() {
               animate={{ opacity: 1 }} 
               exit={{ opacity: 0 }} 
               className="absolute inset-0 bg-black/95 backdrop-blur-xl" 
-              onClick={() => setExpandedPhotoUrl(null)} 
+              onClick={handleCloseModal} 
             />
             <motion.div 
               initial={{ scale: 0.9, opacity: 0 }} 
@@ -542,7 +573,7 @@ export default function SquadDirectoryDashboard() {
               className="relative z-10 w-full max-w-4xl max-h-[90vh] flex flex-col items-center justify-center"
             >
               <button 
-                onClick={() => setExpandedPhotoUrl(null)} 
+                onClick={handleCloseModal} 
                 className="absolute top-4 right-4 p-3 bg-neutral-800/80 rounded-full text-neutral-300 hover:text-white hover:bg-neutral-700 transition-colors z-20 backdrop-blur-md"
               >
                 <X size={24} />
