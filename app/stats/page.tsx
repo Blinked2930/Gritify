@@ -4,7 +4,7 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { ArrowLeft, Flame, Droplet, BookOpen, Activity, Loader2, Utensils, ShieldAlert, User, CheckCircle, Camera, X, History } from "lucide-react";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
 export default function SquadDirectoryDashboard() {
@@ -58,7 +58,6 @@ export default function SquadDirectoryDashboard() {
         
         <div className="max-w-4xl mx-auto space-y-6 relative z-10">
           <div className="flex items-center gap-4 border-b border-neutral-800/50 pb-6 pt-4">
-            {/* CRITICAL FIX: Routing back to /dashboard instead of / */}
             <Link href="/dashboard" className="bg-neutral-900 border border-neutral-800 hover:border-emerald-500/50 p-3 rounded-full hover:bg-emerald-500/10 transition-all group">
               <ArrowLeft className="w-5 h-5 text-neutral-400 group-hover:text-emerald-400 transition-colors" />
             </Link>
@@ -74,8 +73,10 @@ export default function SquadDirectoryDashboard() {
             {fullSquadList.map((member, idx) => {
               const todayLog = getTodayLogForUser(member.logs || []);
               const u = member.user;
+              
+              // CRITICAL FIX: Database values are now absolute. Do not multiply by vesselSize anymore.
               const waterTarget = u?.vesselUnit === "liters" ? 3.78 : u?.vesselUnit === "ml" ? 3785 : 128;
-              const currentWater = todayLog ? ((todayLog?.waterTotal || 0) * (u?.vesselSize || 1)) : 0;
+              const currentWater = todayLog ? (todayLog?.waterTotal || 0) : 0;
               
               const isW1 = todayLog?.workout1?.done;
               const isW2 = todayLog?.workout2?.done;
@@ -181,7 +182,9 @@ export default function SquadDirectoryDashboard() {
 
   const generateBlockState = (log: any, isHistory = false) => {
     if (!log) return "future";
-    const currentWater = ((log.waterTotal || 0) * (targetUser?.vesselSize || 1));
+    
+    // CRITICAL FIX: Database values are now absolute. No multiplier.
+    const currentWater = (log.waterTotal || 0);
     const isW1 = !!log.workout1?.done;
     const isW2 = !!log.workout2?.done;
     const isWater = currentWater >= waterTarget;
@@ -241,10 +244,11 @@ export default function SquadDirectoryDashboard() {
               )}
             </div>
 
+            {/* CRITICAL FIX: Displaying Unit Labels */}
             <div className="bg-neutral-900/40 border border-neutral-800 p-5 rounded-2xl">
-              <p className="flex items-center text-neutral-500 text-[10px] font-bold uppercase tracking-widest mb-1 gap-1"><Droplet size={12} className="text-blue-500" /> Water</p>
+              <p className="flex items-center text-neutral-500 text-[10px] font-bold uppercase tracking-widest mb-1 gap-1"><Droplet size={12} className="text-blue-500" /> Water ({targetUser?.vesselUnit || "oz"})</p>
               {canViewWater ? (
-                <p className="text-2xl font-black text-white">{targetStats?.totalWater?.toLocaleString() || 0}</p>
+                <p className="text-2xl font-black text-white">{targetStats?.totalWater?.toLocaleString(undefined, {maximumFractionDigits: 1}) || 0}</p>
               ) : (
                 <p className="text-xs font-bold text-neutral-600 uppercase flex items-center gap-1 mt-2"><ShieldAlert size={14} /> Hidden</p>
               )}
@@ -268,7 +272,7 @@ export default function SquadDirectoryDashboard() {
             <div className="grid grid-cols-7 gap-2 sm:gap-3">
               {calendarBlocks.map((block, idx) => {
                 const log = block.log;
-                const currentWater = log ? ((log.waterTotal || 0) * (targetUser?.vesselSize || 1)) : 0;
+                const currentWater = log ? (log.waterTotal || 0) : 0;
                 
                 const isW1 = log?.workout1?.done;
                 const isW2 = log?.workout2?.done;
@@ -312,15 +316,6 @@ export default function SquadDirectoryDashboard() {
                 );
               })}
             </div>
-            
-            <div className="flex justify-between px-2 mt-5">
-               <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-orange-500"></div><span className="text-[8px] uppercase tracking-widest text-neutral-500 font-bold">W1</span></div>
-               <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-violet-500"></div><span className="text-[8px] uppercase tracking-widest text-neutral-500 font-bold">W2</span></div>
-               <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-blue-500"></div><span className="text-[8px] uppercase tracking-widest text-neutral-500 font-bold">H2O</span></div>
-               <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-amber-500"></div><span className="text-[8px] uppercase tracking-widest text-neutral-500 font-bold">Read</span></div>
-               <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-emerald-500"></div><span className="text-[8px] uppercase tracking-widest text-neutral-500 font-bold">Diet</span></div>
-               <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-cyan-500"></div><span className="text-[8px] uppercase tracking-widest text-neutral-500 font-bold">Pic</span></div>
-            </div>
           </div>
         </div>
 
@@ -332,7 +327,7 @@ export default function SquadDirectoryDashboard() {
                 {historyLogs.map((log: any, idx: number) => {
                   const state = generateBlockState(log, true);
                   
-                  const currentWater = ((log.waterTotal || 0) * (targetUser?.vesselSize || 1));
+                  const currentWater = (log.waterTotal || 0);
                   const isW1 = !!log.workout1?.done;
                   const isW2 = !!log.workout2?.done;
                   const isWater = currentWater >= waterTarget;
@@ -395,11 +390,14 @@ export default function SquadDirectoryDashboard() {
               
               <div className="space-y-4">
                 <div className="grid grid-cols-3 gap-2 mb-4">
-                  {/* Water Block */}
+                  {/* CRITICAL FIX: Display absolute water values with explicit unit labels */}
                   <div className="bg-neutral-950 border border-neutral-800/80 p-3 rounded-xl flex flex-col items-center justify-center gap-1">
                     <Droplet size={14} className={(selectedLogDay?.waterTotal || 0) > 0 ? "text-blue-500" : "text-neutral-600"} />
                     {canViewWater ? (
-                      <span className="font-black text-white text-base">{((selectedLogDay?.waterTotal || 0) * (targetUser?.vesselSize || 1)).toFixed(0)}</span>
+                      <>
+                        <span className="font-black text-white text-base">{(selectedLogDay?.waterTotal || 0).toFixed(targetUser?.vesselUnit === "liters" ? 2 : 0)}</span>
+                        <span className="text-[9px] text-neutral-500 font-bold uppercase tracking-widest">{targetUser?.vesselUnit || "oz"}</span>
+                      </>
                     ) : (
                       <span className="text-[10px] text-neutral-600 font-bold uppercase mt-1">Hidden</span>
                     )}
@@ -409,7 +407,10 @@ export default function SquadDirectoryDashboard() {
                   <div className="bg-neutral-950 border border-neutral-800/80 p-3 rounded-xl flex flex-col items-center justify-center gap-1">
                     <BookOpen size={14} className={(selectedLogDay?.readingTotal || 0) > 0 ? "text-amber-500" : "text-neutral-600"} />
                     {canViewReading ? (
-                      <span className="font-black text-white text-base">{selectedLogDay?.readingTotal || 0}</span>
+                      <>
+                        <span className="font-black text-white text-base">{selectedLogDay?.readingTotal || 0}</span>
+                        <span className="text-[9px] text-neutral-500 font-bold uppercase tracking-widest">Pages</span>
+                      </>
                     ) : (
                       <span className="text-[10px] text-neutral-600 font-bold uppercase mt-1">Hidden</span>
                     )}
@@ -419,7 +420,9 @@ export default function SquadDirectoryDashboard() {
                   <div className="bg-neutral-950 border border-neutral-800/80 p-3 rounded-xl flex flex-col items-center justify-center gap-1">
                     <Utensils size={14} className={selectedLogDay?.diet ? "text-emerald-500" : "text-red-500"} />
                     {canViewDiet ? (
-                      <span className="font-black text-white text-xs mt-1">{selectedLogDay?.diet ? "CLEAN" : "DIRTY"}</span>
+                      <>
+                        <span className="font-black text-white text-xs mt-1">{selectedLogDay?.diet ? "CLEAN" : "DIRTY"}</span>
+                      </>
                     ) : (
                       <span className="text-[10px] text-neutral-600 font-bold uppercase mt-1">Hidden</span>
                     )}
