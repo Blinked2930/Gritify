@@ -7,6 +7,26 @@ import Link from "next/link";
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
+// UNIVERSAL TRANSLATOR: Converts any water amount from the logger's unit to the viewer's unit
+const convertWater = (amount: number, fromUnit: string, toUnit: string) => {
+  if (!amount) return 0;
+  const from = (fromUnit || "oz").toLowerCase();
+  const to = (toUnit || "oz").toLowerCase();
+  
+  if (from === to) return amount;
+
+  // Step 1: Normalize everything to milliliters as a base
+  let baseMl = amount;
+  if (from === "oz") baseMl = amount * 29.5735;
+  else if (from === "liters") baseMl = amount * 1000;
+
+  // Step 2: Convert from base milliliters to the viewer's preferred unit
+  if (to === "oz") return baseMl / 29.5735;
+  if (to === "liters") return baseMl / 1000;
+  
+  return baseMl; // Default return in ml if requested
+};
+
 export default function SquadDirectoryDashboard() {
   const me = useQuery(api.logs.getMe);
   const data = useQuery(api.logs.getGlobalAggregates);
@@ -33,6 +53,7 @@ export default function SquadDirectoryDashboard() {
     );
   }
 
+  const myUnit = me.vesselUnit || "oz";
   const rawSquadArray = data.squad || []; 
   const fullSquadList = [
     {
@@ -74,7 +95,7 @@ export default function SquadDirectoryDashboard() {
               const todayLog = getTodayLogForUser(member.logs || []);
               const u = member.user;
               
-              // CRITICAL FIX: Database values are now absolute. Do not multiply by vesselSize anymore.
+              // Determine success state using the target user's native unit parameters
               const waterTarget = u?.vesselUnit === "liters" ? 3.78 : u?.vesselUnit === "ml" ? 3785 : 128;
               const currentWater = todayLog ? (todayLog?.waterTotal || 0) : 0;
               
@@ -177,17 +198,17 @@ export default function SquadDirectoryDashboard() {
   const canViewDiet = checkAccess(targetUser.privacySettings?.shareDiet);
   const canViewPhotos = checkAccess(targetUser.privacySettings?.sharePhotos);
 
-  const waterTarget = targetUser?.vesselUnit === "liters" ? 3.78 : targetUser?.vesselUnit === "ml" ? 3785 : 128;
+  const targetNativeWaterUnit = targetUser?.vesselUnit || "oz";
+  const targetNativeWaterGoal = targetUser?.vesselUnit === "liters" ? 3.78 : targetUser?.vesselUnit === "ml" ? 3785 : 128;
   const readingTarget = targetUser?.dailyReadingGoal || 10;
 
   const generateBlockState = (log: any, isHistory = false) => {
     if (!log) return "future";
     
-    // CRITICAL FIX: Database values are now absolute. No multiplier.
     const currentWater = (log.waterTotal || 0);
     const isW1 = !!log.workout1?.done;
     const isW2 = !!log.workout2?.done;
-    const isWater = currentWater >= waterTarget;
+    const isWater = currentWater >= targetNativeWaterGoal;
     const isRead = (log.readingTotal || 0) >= readingTarget;
     const isDiet = !!log.diet;
     const isPhoto = !!log.photoStorageId;
@@ -244,11 +265,13 @@ export default function SquadDirectoryDashboard() {
               )}
             </div>
 
-            {/* CRITICAL FIX: Displaying Unit Labels */}
+            {/* CRITICAL FEATURE: Universal Translation. Convert partner's raw water into my native unit */}
             <div className="bg-neutral-900/40 border border-neutral-800 p-5 rounded-2xl">
-              <p className="flex items-center text-neutral-500 text-[10px] font-bold uppercase tracking-widest mb-1 gap-1"><Droplet size={12} className="text-blue-500" /> Water ({targetUser?.vesselUnit || "oz"})</p>
+              <p className="flex items-center text-neutral-500 text-[10px] font-bold uppercase tracking-widest mb-1 gap-1"><Droplet size={12} className="text-blue-500" /> Water ({myUnit})</p>
               {canViewWater ? (
-                <p className="text-2xl font-black text-white">{targetStats?.totalWater?.toLocaleString(undefined, {maximumFractionDigits: 1}) || 0}</p>
+                <p className="text-2xl font-black text-white">
+                  {convertWater(targetStats?.totalWater || 0, targetNativeWaterUnit, myUnit).toLocaleString(undefined, {maximumFractionDigits: 1})}
+                </p>
               ) : (
                 <p className="text-xs font-bold text-neutral-600 uppercase flex items-center gap-1 mt-2"><ShieldAlert size={14} /> Hidden</p>
               )}
@@ -276,7 +299,7 @@ export default function SquadDirectoryDashboard() {
                 
                 const isW1 = log?.workout1?.done;
                 const isW2 = log?.workout2?.done;
-                const isWater = currentWater >= waterTarget;
+                const isWater = currentWater >= targetNativeWaterGoal;
                 const isRead = log && (log.readingTotal || 0) >= readingTarget;
                 const isDiet = log?.diet;
                 const isPhoto = log?.photoStorageId;
@@ -330,7 +353,7 @@ export default function SquadDirectoryDashboard() {
                   const currentWater = (log.waterTotal || 0);
                   const isW1 = !!log.workout1?.done;
                   const isW2 = !!log.workout2?.done;
-                  const isWater = currentWater >= waterTarget;
+                  const isWater = currentWater >= targetNativeWaterGoal;
                   const isRead = (log.readingTotal || 0) >= readingTarget;
                   const isDiet = !!log.diet;
                   const isPhoto = !!log.photoStorageId;
@@ -390,13 +413,15 @@ export default function SquadDirectoryDashboard() {
               
               <div className="space-y-4">
                 <div className="grid grid-cols-3 gap-2 mb-4">
-                  {/* CRITICAL FIX: Display absolute water values with explicit unit labels */}
+                  {/* CRITICAL FIX: Convert target's specific daily log into my unit */}
                   <div className="bg-neutral-950 border border-neutral-800/80 p-3 rounded-xl flex flex-col items-center justify-center gap-1">
                     <Droplet size={14} className={(selectedLogDay?.waterTotal || 0) > 0 ? "text-blue-500" : "text-neutral-600"} />
                     {canViewWater ? (
                       <>
-                        <span className="font-black text-white text-base">{(selectedLogDay?.waterTotal || 0).toFixed(targetUser?.vesselUnit === "liters" ? 2 : 0)}</span>
-                        <span className="text-[9px] text-neutral-500 font-bold uppercase tracking-widest">{targetUser?.vesselUnit || "oz"}</span>
+                        <span className="font-black text-white text-base">
+                          {convertWater(selectedLogDay?.waterTotal || 0, targetNativeWaterUnit, myUnit).toFixed(myUnit === "liters" ? 2 : 0)}
+                        </span>
+                        <span className="text-[9px] text-neutral-500 font-bold uppercase tracking-widest">{myUnit}</span>
                       </>
                     ) : (
                       <span className="text-[10px] text-neutral-600 font-bold uppercase mt-1">Hidden</span>
