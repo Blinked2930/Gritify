@@ -48,15 +48,16 @@ export default function LandingPage() {
         </div>
 
         <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto pb-12 sm:pb-0">
-          <SignUpButton mode="modal" forceRedirectUrl="/dashboard">
-            <div className="px-10 py-5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-black tracking-widest uppercase text-sm transition-all shadow-[0_0_30px_rgba(16,185,129,0.3)] cursor-pointer">
+          {/* CRITICAL FIX: Removed mode="modal" so it redirects to Clerk's unblockable hosted UI */}
+          <SignUpButton forceRedirectUrl="/dashboard">
+            <button className="px-10 py-5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-black tracking-widest uppercase text-sm transition-all shadow-[0_0_30px_rgba(16,185,129,0.3)] active:scale-95">
               Initialize Protocol
-            </div>
+            </button>
           </SignUpButton>
-          <SignInButton mode="modal" forceRedirectUrl="/dashboard">
-            <div className="px-10 py-5 rounded-2xl bg-transparent border border-neutral-800 hover:bg-neutral-900 text-white font-black tracking-widest uppercase text-sm transition-all cursor-pointer">
+          <SignInButton forceRedirectUrl="/dashboard">
+            <button className="px-10 py-5 rounded-2xl bg-transparent border border-neutral-800 hover:bg-neutral-900 text-white font-black tracking-widest uppercase text-sm transition-all active:scale-95">
               Login
-            </div>
+            </button>
           </SignInButton>
         </div>
       </main>
