@@ -49,12 +49,13 @@ export default function LandingPage() {
         </div>
 
         <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto pb-12 sm:pb-0">
-          <SignUpButton mode="modal" forceRedirectUrl="/dashboard">
+          {/* CRITICAL FIX: Added asChild so React doesn't kill the nested buttons */}
+          <SignUpButton mode="modal" forceRedirectUrl="/dashboard" asChild>
             <button className="px-10 py-5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-black tracking-widest uppercase text-sm transition-all shadow-[0_0_30px_rgba(16,185,129,0.3)]">
               Initialize Protocol
             </button>
           </SignUpButton>
-          <SignInButton mode="modal" forceRedirectUrl="/dashboard">
+          <SignInButton mode="modal" forceRedirectUrl="/dashboard" asChild>
             <button className="px-10 py-5 rounded-2xl bg-transparent border border-neutral-800 hover:bg-neutral-900 text-white font-black tracking-widest uppercase text-sm transition-all">
               Login
             </button>
