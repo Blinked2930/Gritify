@@ -62,6 +62,55 @@ function DashboardMain({ user }: { user: any }) {
     setWaterInputAmount(String(user?.vesselSize || 128));
   }, [user?.vesselSize]);
   
+  // Log waterTotal is now ABSOLUTE. No multiplier needed.
+  const currentWaterAmountStr = log?.waterTotal || 0;
+  const waterTarget = user?.vesselUnit === "liters" ? 3.78 : user?.vesselUnit === "ml" ? 3785 : 128;
+  const isWaterMet = currentWaterAmountStr >= waterTarget;
+  
+  const readingGoal = user?.dailyReadingGoal || 10; 
+  const isPagesMet = log ? (log?.readingTotal || 0) >= readingGoal : false;
+  const isW1Met = log?.workout1?.done;
+  const isW2Met = log?.workout2?.done;
+  const isDisciplineMet = log?.diet && log?.photoStorageId;
+
+  const isDayComplete = Boolean(isW1Met && isW2Met && isWaterMet && isPagesMet && isDisciplineMet);
+  const prevLogStatus = useRef<'loading' | 'incomplete' | 'complete'>('loading');
+
+  useEffect(() => {
+    const currentStatus = log === undefined ? 'loading' : (isDayComplete ? 'complete' : 'incomplete');
+    
+    if (prevLogStatus.current === 'incomplete' && currentStatus === 'complete') {
+      const duration = 3000;
+      const end = Date.now() + duration;
+
+      const frame = () => {
+        confetti({
+          particleCount: 5,
+          angle: 60,
+          spread: 55,
+          origin: { x: 0 },
+          colors: ['#10b981', '#047857', '#020617']
+        });
+        confetti({
+          particleCount: 5,
+          angle: 120,
+          spread: 55,
+          origin: { x: 1 },
+          colors: ['#10b981', '#047857', '#020617']
+        });
+
+        if (Date.now() < end) {
+          requestAnimationFrame(frame);
+        }
+      };
+      frame();
+    }
+    
+    if (currentStatus !== 'loading') {
+      prevLogStatus.current = currentStatus;
+    }
+  }, [log, isDayComplete]);
+
   if (log === undefined) {
     return (
       <div className="min-h-screen bg-neutral-950 flex items-center justify-center text-emerald-500 font-mono animate-pulse">
@@ -124,55 +173,6 @@ function DashboardMain({ user }: { user: any }) {
       setIsPhotoUploading(false);
     }
   };
-
-  // Log waterTotal is now ABSOLUTE. No multiplier needed.
-  const currentWaterAmountStr = log?.waterTotal || 0;
-  const waterTarget = user?.vesselUnit === "liters" ? 3.78 : user?.vesselUnit === "ml" ? 3785 : 128;
-  const isWaterMet = currentWaterAmountStr >= waterTarget;
-  
-  const readingGoal = user?.dailyReadingGoal || 10; 
-  const isPagesMet = log ? (log?.readingTotal || 0) >= readingGoal : false;
-  const isW1Met = log?.workout1?.done;
-  const isW2Met = log?.workout2?.done;
-  const isDisciplineMet = log?.diet && log?.photoStorageId;
-
-  const isDayComplete = Boolean(isW1Met && isW2Met && isWaterMet && isPagesMet && isDisciplineMet);
-  const prevLogStatus = useRef<'loading' | 'incomplete' | 'complete'>('loading');
-
-  useEffect(() => {
-    const currentStatus = log === undefined ? 'loading' : (isDayComplete ? 'complete' : 'incomplete');
-    
-    if (prevLogStatus.current === 'incomplete' && currentStatus === 'complete') {
-      const duration = 3000;
-      const end = Date.now() + duration;
-
-      const frame = () => {
-        confetti({
-          particleCount: 5,
-          angle: 60,
-          spread: 55,
-          origin: { x: 0 },
-          colors: ['#10b981', '#047857', '#020617']
-        });
-        confetti({
-          particleCount: 5,
-          angle: 120,
-          spread: 55,
-          origin: { x: 1 },
-          colors: ['#10b981', '#047857', '#020617']
-        });
-
-        if (Date.now() < end) {
-          requestAnimationFrame(frame);
-        }
-      };
-      frame();
-    }
-    
-    if (currentStatus !== 'loading') {
-      prevLogStatus.current = currentStatus;
-    }
-  }, [log, isDayComplete]);
 
   return (
     <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-neutral-900 via-neutral-950 to-neutral-950 text-neutral-50 px-4 pb-4 pt-[calc(env(safe-area-inset-top)+16px)] sm:px-6 sm:pb-6 sm:pt-[calc(env(safe-area-inset-top)+24px)] font-sans selection:bg-emerald-500/30 overflow-x-hidden">
