@@ -15,6 +15,7 @@
     "@google/generative-ai": "^0.24.1",
     "@radix-ui/react-dialog": "^1.0.5",
     "@radix-ui/react-slot": "^1.0.2",
+    "canvas-confetti": "^1.9.4",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "convex": "^1.15.0",
@@ -28,6 +29,7 @@
     "web-push": "^3.6.7"
   },
   "devDependencies": {
+    "@types/canvas-confetti": "^1.9.0",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",

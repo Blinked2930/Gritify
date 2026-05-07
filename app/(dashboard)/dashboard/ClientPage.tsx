@@ -9,6 +9,7 @@ import Link from "next/link";
 import { OnboardingWizard } from "@/components/features/dashboard/OnboardingWizard";
 import { SettingsModal } from "@/components/features/dashboard/SettingsModal";
 import { WorkoutModal } from "@/components/features/dashboard/WorkoutModal";
+import confetti from "canvas-confetti";
 
 export default function DashboardClient() {
   const user = useQuery(api.logs.getMe);
@@ -134,6 +135,44 @@ function DashboardMain({ user }: { user: any }) {
   const isW1Met = log?.workout1?.done;
   const isW2Met = log?.workout2?.done;
   const isDisciplineMet = log?.diet && log?.photoStorageId;
+
+  const isDayComplete = Boolean(isW1Met && isW2Met && isWaterMet && isPagesMet && isDisciplineMet);
+  const prevLogStatus = useRef<'loading' | 'incomplete' | 'complete'>('loading');
+
+  useEffect(() => {
+    const currentStatus = log === undefined ? 'loading' : (isDayComplete ? 'complete' : 'incomplete');
+    
+    if (prevLogStatus.current === 'incomplete' && currentStatus === 'complete') {
+      const duration = 3000;
+      const end = Date.now() + duration;
+
+      const frame = () => {
+        confetti({
+          particleCount: 5,
+          angle: 60,
+          spread: 55,
+          origin: { x: 0 },
+          colors: ['#10b981', '#047857', '#020617']
+        });
+        confetti({
+          particleCount: 5,
+          angle: 120,
+          spread: 55,
+          origin: { x: 1 },
+          colors: ['#10b981', '#047857', '#020617']
+        });
+
+        if (Date.now() < end) {
+          requestAnimationFrame(frame);
+        }
+      };
+      frame();
+    }
+    
+    if (currentStatus !== 'loading') {
+      prevLogStatus.current = currentStatus;
+    }
+  }, [log, isDayComplete]);
 
   return (
     <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-neutral-900 via-neutral-950 to-neutral-950 text-neutral-50 px-4 pb-4 pt-[calc(env(safe-area-inset-top)+16px)] sm:px-6 sm:pb-6 sm:pt-[calc(env(safe-area-inset-top)+24px)] font-sans selection:bg-emerald-500/30 overflow-x-hidden">
