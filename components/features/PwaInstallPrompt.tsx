@@ -83,11 +83,11 @@ export function PwaInstallPrompt({ onBypass }: { onBypass?: () => void }) {
               <>
                 <div className="flex items-start gap-4">
                   <MoreHorizontal size={20} className="text-emerald-500 shrink-0 mt-0.5" />
-                  <p>Tap the <strong className="text-white font-bold">3-dot menu</strong> in the bottom right corner.</p>
+                  <p>Tap the <strong className="text-white font-bold">3-dot menu</strong>.</p>
                 </div>
                 <div className="flex items-start gap-4">
                   <Share size={20} className="text-emerald-500 shrink-0 mt-0.5" />
-                  <p>Tap the <strong className="text-white font-bold">Share</strong> icon.</p>
+                  <p>Tap the <strong className="text-white font-bold">Share icon</strong>.</p>
                 </div>
                 <div className="flex items-start gap-4">
                   <PlusSquare size={20} className="text-emerald-500 shrink-0 mt-0.5" />
@@ -102,11 +102,15 @@ export function PwaInstallPrompt({ onBypass }: { onBypass?: () => void }) {
               <>
                 <div className="flex items-start gap-4">
                   <MoreVertical size={20} className="text-emerald-500 shrink-0 mt-0.5" />
-                  <p>Tap the <strong className="text-white font-bold">3-dot menu</strong> in the top right corner of Chrome.</p>
+                  <p>Tap the <strong className="text-white font-bold">3-dot menu</strong> in the top right corner.</p>
                 </div>
                 <div className="flex items-start gap-4">
                   <PlusSquare size={20} className="text-emerald-500 shrink-0 mt-0.5" />
-                  <p>Tap <strong className="text-white font-bold">Add to Home screen</strong> or <strong className="text-white font-bold">Install app</strong>.</p>
+                  <p>Scroll down and tap <strong className="text-white font-bold">Add to Home screen</strong>.</p>
+                </div>
+                <div className="flex items-start gap-4">
+                  <Check size={20} className="text-emerald-500 shrink-0 mt-0.5" />
+                  <p>Tap <strong className="text-white font-bold">Install</strong> on the popup.</p>
                 </div>
               </>
             )}
