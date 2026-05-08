@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useConvexAuth } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useState, useRef, useEffect } from "react";
 import { AnimatePresence } from "framer-motion";
@@ -9,12 +9,13 @@ import Link from "next/link";
 import { OnboardingWizard } from "@/components/features/dashboard/OnboardingWizard";
 import { SettingsModal } from "@/components/features/dashboard/SettingsModal";
 import { WorkoutModal } from "@/components/features/dashboard/WorkoutModal";
-import confetti from "canvas-confetti";
 
 export default function DashboardClient() {
+  // Wait for the auth handshake to completely finish before assessing user state
+  const { isLoading } = useConvexAuth(); 
   const user = useQuery(api.logs.getMe);
 
-  if (user === undefined) {
+  if (isLoading || user === undefined) {
     return (
       <div className="min-h-screen bg-neutral-950 flex items-center justify-center text-emerald-500 font-mono animate-pulse">
         SYNCING IDENTITY...
@@ -36,7 +37,6 @@ export default function DashboardClient() {
     );
   }
 
-  // INTERCEPT NEW USERS FOR SETUP
   if (user.hasCompletedSetup === false || user.hasCompletedSetup === undefined) {
     return <OnboardingWizard user={user} />;
   }
@@ -54,63 +54,12 @@ function DashboardMain({ user }: { user: any }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [workoutPanelOpen, setWorkoutPanelOpen] = useState<"workout1" | "workout2" | null>(null);
 
-  // Controlled state for water input so it dynamically matches the user's settings profile
   const [waterInputAmount, setWaterInputAmount] = useState<string>(String(user?.vesselSize || 128));
 
-  // If the user updates their vessel size in the settings modal, update the local input instantly
   useEffect(() => {
     setWaterInputAmount(String(user?.vesselSize || 128));
   }, [user?.vesselSize]);
   
-  // Log waterTotal is now ABSOLUTE. No multiplier needed.
-  const currentWaterAmountStr = log?.waterTotal || 0;
-  const waterTarget = user?.vesselUnit === "liters" ? 3.78 : user?.vesselUnit === "ml" ? 3785 : 128;
-  const isWaterMet = currentWaterAmountStr >= waterTarget;
-  
-  const readingGoal = user?.dailyReadingGoal || 10; 
-  const isPagesMet = log ? (log?.readingTotal || 0) >= readingGoal : false;
-  const isW1Met = log?.workout1?.done;
-  const isW2Met = log?.workout2?.done;
-  const isDisciplineMet = log?.diet && log?.photoStorageId;
-
-  const isDayComplete = Boolean(isW1Met && isW2Met && isWaterMet && isPagesMet && isDisciplineMet);
-  const prevLogStatus = useRef<'loading' | 'incomplete' | 'complete'>('loading');
-
-  useEffect(() => {
-    const currentStatus = log === undefined ? 'loading' : (isDayComplete ? 'complete' : 'incomplete');
-    
-    if (prevLogStatus.current === 'incomplete' && currentStatus === 'complete') {
-      const duration = 3000;
-      const end = Date.now() + duration;
-
-      const frame = () => {
-        confetti({
-          particleCount: 5,
-          angle: 60,
-          spread: 55,
-          origin: { x: 0 },
-          colors: ['#10b981', '#047857', '#020617']
-        });
-        confetti({
-          particleCount: 5,
-          angle: 120,
-          spread: 55,
-          origin: { x: 1 },
-          colors: ['#10b981', '#047857', '#020617']
-        });
-
-        if (Date.now() < end) {
-          requestAnimationFrame(frame);
-        }
-      };
-      frame();
-    }
-    
-    if (currentStatus !== 'loading') {
-      prevLogStatus.current = currentStatus;
-    }
-  }, [log, isDayComplete]);
-
   if (log === undefined) {
     return (
       <div className="min-h-screen bg-neutral-950 flex items-center justify-center text-emerald-500 font-mono animate-pulse">
@@ -138,7 +87,6 @@ function DashboardMain({ user }: { user: any }) {
     if (amount !== 0) {
       const currentAbsoluteTotal = log?.waterTotal || 0;
       updateLog({ waterTotal: Math.max(0, currentAbsoluteTotal + amount) });
-      // Reset back to their default vessel size after logging
       setWaterInputAmount(String(user?.vesselSize || 128));
     }
   };
@@ -173,6 +121,16 @@ function DashboardMain({ user }: { user: any }) {
       setIsPhotoUploading(false);
     }
   };
+
+  const currentWaterAmountStr = log?.waterTotal || 0;
+  const waterTarget = user?.vesselUnit === "liters" ? 3.78 : user?.vesselUnit === "ml" ? 3785 : 128;
+  const isWaterMet = currentWaterAmountStr >= waterTarget;
+  
+  const readingGoal = user?.dailyReadingGoal || 10; 
+  const isPagesMet = log ? (log?.readingTotal || 0) >= readingGoal : false;
+  const isW1Met = log?.workout1?.done;
+  const isW2Met = log?.workout2?.done;
+  const isDisciplineMet = log?.diet && log?.photoStorageId;
 
   return (
     <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-neutral-900 via-neutral-950 to-neutral-950 text-neutral-50 px-4 pb-4 pt-[calc(env(safe-area-inset-top)+16px)] sm:px-6 sm:pb-6 sm:pt-[calc(env(safe-area-inset-top)+24px)] font-sans selection:bg-emerald-500/30 overflow-x-hidden">

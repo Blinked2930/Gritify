@@ -238,6 +238,32 @@ export const joinSquad = mutation({
   }
 });
 
+export const destroyUserAccount = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new ConvexError("Unauthorized");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q: any) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user) return;
+
+    const logs = await ctx.db
+      .query("dailyLogs")
+      .withIndex("by_user_date", (q) => q.eq("userId", user._id))
+      .collect();
+      
+    for (const log of logs) {
+      await ctx.db.delete(log._id);
+    }
+
+    await ctx.db.delete(user._id);
+  }
+});
+
 export const updateLog = mutation({
   args: {
     waterTotal: v.optional(v.number()),
@@ -260,6 +286,19 @@ export const updateLog = mutation({
       .query("dailyLogs")
       .withIndex("by_user_date", (q) => q.eq("userId", user._id).eq("date", today))
       .first();
+
+    // Analyze previous state to check if they already had a perfect day
+    const waterTarget = user.vesselUnit === "liters" ? 3.78 : user.vesselUnit === "ml" ? 3785 : 128;
+    const readingTarget = user.dailyReadingGoal || 10;
+
+    const prevWater = existingLog ? (existingLog.waterTotal || 0) : 0;
+    const prevRead = existingLog ? (existingLog.readingTotal || 0) : 0;
+    const prevW1 = existingLog ? !!existingLog.workout1?.done : false;
+    const prevW2 = existingLog ? !!existingLog.workout2?.done : false;
+    const prevDiet = existingLog ? !!existingLog.diet : false;
+    const prevPhoto = existingLog ? !!existingLog.photoStorageId : false;
+
+    const wasPerfect = prevW1 && prevW2 && prevDiet && prevPhoto && (prevWater >= waterTarget) && (prevRead >= readingTarget);
 
     if (!existingLog) {
       const dummyChallengeId = await ctx.db.insert("challenges", {
@@ -296,16 +335,20 @@ export const updateLog = mutation({
       logId = existingLog._id;
     }
 
-    // --- ABSOLUTE HYDRATION NOTIFICATION LOGIC ---
-    const waterTarget = user.vesselUnit === "liters" ? 3.78 : user.vesselUnit === "ml" ? 3785 : 128;
-    const prevWater = existingLog ? (existingLog.waterTotal || 0) : 0;
+    // Analyze NEW state to determine what notification to send
     const newWater = args.waterTotal !== undefined ? args.waterTotal : prevWater;
-    
-    // Only fire if this specific update crossed the finish line
+    const newRead = args.readingTotal !== undefined ? args.readingTotal : prevRead;
+    const newW1 = args.workout1 !== undefined ? args.workout1.done : (args.workout1Done !== undefined ? args.workout1Done : prevW1);
+    const newW2 = args.workout2 !== undefined ? args.workout2.done : (args.workout2Done !== undefined ? args.workout2Done : prevW2);
+    const newDiet = args.diet !== undefined ? args.diet : prevDiet;
+    const newPhoto = args.photoStorageId !== undefined ? !!args.photoStorageId : prevPhoto;
+
+    const isPerfect = newW1 && newW2 && newDiet && newPhoto && (newWater >= waterTarget) && (newRead >= readingTarget);
     const justHitWaterGoal = prevWater < waterTarget && newWater >= waterTarget;
 
     let actionType = null;
-    if (args.workout1 !== undefined || args.workout1Done !== undefined) actionType = "Logged an Outdoor Workout";
+    if (!wasPerfect && isPerfect) actionType = "Completed a PERFECT DAY! 🏆";
+    else if (args.workout1 !== undefined || args.workout1Done !== undefined) actionType = "Logged an Outdoor Workout";
     else if (args.workout2 !== undefined || args.workout2Done !== undefined) actionType = "Logged an Indoor Workout";
     else if (args.photoStorageId !== undefined) actionType = "Secured the Progress Photo";
     else if (args.readingTotal !== undefined) actionType = "Logged Reading Pages";
@@ -337,7 +380,6 @@ export const getGlobalAggregates = query({
       let workoutCount = 0;
       
       logs.forEach(l => {
-        // Water is now absolute, no longer multiplied by vesselSize
         totalWater += (l.waterTotal || 0);
         totalPages += (l.readingTotal || 0);
         totalCals += (l.workout1?.cals || 0) + (l.workout2?.cals || 0);

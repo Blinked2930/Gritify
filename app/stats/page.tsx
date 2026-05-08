@@ -7,7 +7,6 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
-// UNIVERSAL TRANSLATOR: Converts any water amount from the logger's unit to the viewer's unit
 const convertWater = (amount: number, fromUnit: string, toUnit: string) => {
   if (!amount) return 0;
   const from = (fromUnit || "oz").toLowerCase();
@@ -15,16 +14,28 @@ const convertWater = (amount: number, fromUnit: string, toUnit: string) => {
   
   if (from === to) return amount;
 
-  // Step 1: Normalize everything to milliliters as a base
   let baseMl = amount;
   if (from === "oz") baseMl = amount * 29.5735;
   else if (from === "liters") baseMl = amount * 1000;
 
-  // Step 2: Convert from base milliliters to the viewer's preferred unit
   if (to === "oz") return baseMl / 29.5735;
   if (to === "liters") return baseMl / 1000;
   
   return baseMl; 
+};
+
+// Calculates the current day dynamically based on someone's start date
+const calculateDay = (startDate?: number) => {
+  if (!startDate) return 1;
+  const now = new Date();
+  now.setHours(now.getHours() - 2);
+  const start = new Date(startDate);
+  start.setHours(start.getHours() - 2);
+  start.setHours(0,0,0,0);
+  const todayObj = new Date(now);
+  todayObj.setHours(0,0,0,0);
+  const diffTime = Math.abs(todayObj.getTime() - start.getTime());
+  return Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
 };
 
 export default function SquadDirectoryDashboard() {
@@ -35,8 +46,6 @@ export default function SquadDirectoryDashboard() {
   const [selectedLogDay, setSelectedLogDay] = useState<any | null>(null);
   const [expandedPhotoUrl, setExpandedPhotoUrl] = useState<string | null>(null);
 
-  // --- NATIVE HISTORY MANAGEMENT ---
-  // Pushes a dummy state to the browser history so mobile swipe-back works naturally
   const openUserDetail = (member: any) => {
     window.history.pushState({ view: 'user_detail' }, "");
     setSelectedUserDetailed(member);
@@ -53,12 +62,11 @@ export default function SquadDirectoryDashboard() {
   };
 
   const handleCloseModal = () => {
-    window.history.back(); // This triggers the popstate listener below
+    window.history.back(); 
   };
 
   useEffect(() => {
     const handlePopState = () => {
-      // Gracefully peel back layers of UI depending on what is open
       if (expandedPhotoUrl) {
         setExpandedPhotoUrl(null);
       } else if (selectedLogDay) {
@@ -133,6 +141,7 @@ export default function SquadDirectoryDashboard() {
               
               const waterTarget = u?.vesselUnit === "liters" ? 3.78 : u?.vesselUnit === "ml" ? 3785 : 128;
               const currentWater = todayLog ? (todayLog?.waterTotal || 0) : 0;
+              const currentDay = calculateDay(u?.challengeStartDate);
               
               const isW1 = todayLog?.workout1?.done;
               const isW2 = todayLog?.workout2?.done;
@@ -151,10 +160,13 @@ export default function SquadDirectoryDashboard() {
                   className={`w-full bg-neutral-900/60 backdrop-blur-md border rounded-3xl p-5 text-left relative overflow-hidden group transition-all flex flex-col gap-4 ${member.isMe ? 'border-emerald-500/30' : 'border-neutral-800'}`}
                 >
                   <div className="flex justify-between items-center w-full">
-                    <h2 className="text-base font-black uppercase text-white tracking-widest flex items-center gap-2">
-                      {member.isMe ? <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" /> : <User size={14} className="text-neutral-500" />}
-                      {member.user.name}
-                    </h2>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-base font-black uppercase text-white tracking-widest flex items-center gap-2">
+                        {member.isMe ? <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" /> : <User size={14} className="text-neutral-500" />}
+                        {member.user.name}
+                      </h2>
+                      <span className="bg-neutral-800 text-neutral-300 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-widest border border-neutral-700">Day {currentDay}</span>
+                    </div>
                     <span className="text-[10px] text-neutral-500 uppercase tracking-widest font-bold group-hover:text-emerald-400 transition-colors">Deep Dive &rarr;</span>
                   </div>
 
