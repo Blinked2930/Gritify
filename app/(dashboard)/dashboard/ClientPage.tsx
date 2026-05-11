@@ -6,12 +6,12 @@ import { useState, useRef, useEffect } from "react";
 import { AnimatePresence } from "framer-motion";
 import { Camera, Settings, CheckCircle, Droplet, BookOpen, Users, Flame, Activity, ShieldCheck, Dumbbell } from "lucide-react";
 import Link from "next/link";
+import confetti from "canvas-confetti";
 import { OnboardingWizard } from "@/components/features/dashboard/OnboardingWizard";
 import { SettingsModal } from "@/components/features/dashboard/SettingsModal";
 import { WorkoutModal } from "@/components/features/dashboard/WorkoutModal";
 
 export default function DashboardClient() {
-  // Wait for the auth handshake to completely finish before assessing user state
   const { isLoading } = useConvexAuth(); 
   const user = useQuery(api.logs.getMe);
 
@@ -55,6 +55,9 @@ function DashboardMain({ user }: { user: any }) {
   const [workoutPanelOpen, setWorkoutPanelOpen] = useState<"workout1" | "workout2" | null>(null);
 
   const [waterInputAmount, setWaterInputAmount] = useState<string>(String(user?.vesselSize || 128));
+
+  // Ref to track if we already fired confetti for this specific log so it doesn't spam on re-renders
+  const firedConfettiLogId = useRef<string | null>(null);
 
   useEffect(() => {
     setWaterInputAmount(String(user?.vesselSize || 128));
@@ -122,15 +125,39 @@ function DashboardMain({ user }: { user: any }) {
     }
   };
 
+  // State calculations
   const currentWaterAmountStr = log?.waterTotal || 0;
   const waterTarget = user?.vesselUnit === "liters" ? 3.78 : user?.vesselUnit === "ml" ? 3785 : 128;
   const isWaterMet = currentWaterAmountStr >= waterTarget;
   
   const readingGoal = user?.dailyReadingGoal || 10; 
   const isPagesMet = log ? (log?.readingTotal || 0) >= readingGoal : false;
-  const isW1Met = log?.workout1?.done;
-  const isW2Met = log?.workout2?.done;
-  const isDisciplineMet = log?.diet && log?.photoStorageId;
+  const isW1Met = !!log?.workout1?.done;
+  const isW2Met = !!log?.workout2?.done;
+  const isDisciplineMet = !!(log?.diet && log?.photoStorageId);
+
+  const isPerfectDay = isW1Met && isW2Met && isWaterMet && isPagesMet && isDisciplineMet;
+
+  // Watch for the perfect day completion and blast confetti
+  useEffect(() => {
+    if (!log) return;
+    
+    if (isPerfectDay && firedConfettiLogId.current !== log._id) {
+      // Fire confetti!
+      confetti({
+        particleCount: 150,
+        spread: 80,
+        origin: { y: 0.6 },
+        colors: ['#10b981', '#34d399', '#059669', '#ffffff'],
+        disableForReducedMotion: true
+      });
+      // Lock it so it doesn't fire again on minor re-renders today
+      firedConfettiLogId.current = log._id;
+    } else if (!isPerfectDay && firedConfettiLogId.current === log._id) {
+      // If they un-check a task, reset the lock so they can earn the confetti again
+      firedConfettiLogId.current = null;
+    }
+  }, [isPerfectDay, log]);
 
   return (
     <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-neutral-900 via-neutral-950 to-neutral-950 text-neutral-50 px-4 pb-4 pt-[calc(env(safe-area-inset-top)+16px)] sm:px-6 sm:pb-6 sm:pt-[calc(env(safe-area-inset-top)+24px)] font-sans selection:bg-emerald-500/30 overflow-x-hidden">
