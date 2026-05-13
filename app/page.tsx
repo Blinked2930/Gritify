@@ -1,7 +1,7 @@
-import { SignUpButton, SignInButton } from "@clerk/nextjs";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { ShieldCheck, Target, Users } from "lucide-react";
+import Link from "next/link";
 
 export default function LandingPage() {
   const { userId } = auth();
@@ -47,18 +47,14 @@ export default function LandingPage() {
           </div>
         </div>
 
+        {/* CRITICAL FIX: Swapped finicky Clerk wrappers for bulletproof Next.js Links */}
         <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto pb-12 sm:pb-0">
-          {/* CRITICAL FIX: These are back to being <div> tags to prevent React DOM nesting crashes */}
-          <SignUpButton forceRedirectUrl="/dashboard">
-            <div className="px-10 py-5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-black tracking-widest uppercase text-sm transition-all shadow-[0_0_30px_rgba(16,185,129,0.3)] cursor-pointer">
-              Start Challenge
-            </div>
-          </SignUpButton>
-          <SignInButton forceRedirectUrl="/dashboard">
-            <div className="px-10 py-5 rounded-2xl bg-transparent border border-neutral-800 hover:bg-neutral-900 text-white font-black tracking-widest uppercase text-sm transition-all cursor-pointer">
-              Log In
-            </div>
-          </SignInButton>
+          <Link href="/sign-up" className="px-10 py-5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-black tracking-widest uppercase text-sm transition-all shadow-[0_0_30px_rgba(16,185,129,0.3)] flex items-center justify-center">
+            Start Challenge
+          </Link>
+          <Link href="/sign-in" className="px-10 py-5 rounded-2xl bg-transparent border border-neutral-800 hover:bg-neutral-900 text-white font-black tracking-widest uppercase text-sm transition-all flex items-center justify-center">
+            Log In
+          </Link>
         </div>
       </main>
     </div>
