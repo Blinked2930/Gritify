@@ -2,7 +2,7 @@
 
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { ArrowLeft, Flame, Droplet, BookOpen, Activity, Loader2, Utensils, ShieldAlert, User, CheckCircle, Camera, X, History } from "lucide-react";
+import { ArrowLeft, Flame, Droplet, BookOpen, Activity, Loader2, Utensils, ShieldAlert, User, CheckCircle, Camera, X, History, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -34,7 +34,7 @@ const calculateDay = (startDate?: number) => {
   start.setHours(0,0,0,0);
   const todayObj = new Date(now);
   todayObj.setHours(0,0,0,0);
-  const diffTime = Math.abs(todayObj.getTime() - start.getTime());
+  const diffTime = todayObj.getTime() - start.getTime();
   return Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
 };
 
@@ -45,10 +45,18 @@ export default function SquadDirectoryDashboard() {
   const [selectedUserDetailed, setSelectedUserDetailed] = useState<any | null>(null);
   const [selectedLogDay, setSelectedLogDay] = useState<any | null>(null);
   const [expandedPhotoUrl, setExpandedPhotoUrl] = useState<string | null>(null);
+  
+  // Controls the 28-day 4x7 pagination block
+  const [calendarPage, setCalendarPage] = useState(0);
 
   const openUserDetail = (member: any) => {
     window.history.pushState({ view: 'user_detail' }, "");
     setSelectedUserDetailed(member);
+    
+    // Auto-focus the calendar on the 28-day window the user is currently in
+    const currentDay = calculateDay(member.user?.challengeStartDate);
+    const boundedDay = Math.max(1, Math.min(currentDay, 75));
+    setCalendarPage(Math.floor((boundedDay - 1) / 28));
   };
 
   const openLogDay = (logData: any) => {
@@ -225,7 +233,7 @@ export default function SquadDirectoryDashboard() {
   const isMe = selectedUserDetailed.isMe;
 
   const challengeStart = targetUser.challengeStartDate ? new Date(targetUser.challengeStartDate) : new Date(0);
-  challengeStart.setHours(0,0,0,0);
+  challengeStart.setHours(12,0,0,0); // Setting to noon prevents weird timezone/DST shifts
 
   const currentLogs = allTargetLogs.filter((l: any) => new Date(l.date) >= challengeStart);
   const historyLogs = allTargetLogs.filter((l: any) => new Date(l.date) < challengeStart).sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -267,12 +275,27 @@ export default function SquadDirectoryDashboard() {
     return isHistory ? "history_pending" : "pending"; 
   };
 
+  // Re-engineered Calendar Block generation to assign precise real-world dates
   const calendarBlocks = Array.from({ length: 75 }).map((_, i) => {
     const dayNum = i + 1;
-    const sortedLogs = [...currentLogs].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    const log = sortedLogs[i]; 
-    return { dayNum, state: generateBlockState(log), log };
+    
+    // Calculate the absolute date for this specific block
+    const blockDate = new Date(challengeStart);
+    blockDate.setDate(blockDate.getDate() + i);
+    const dateString = blockDate.toISOString().split("T")[0];
+    
+    // Format label for UI (e.g. "5/12")
+    const dateLabel = `${blockDate.getMonth() + 1}/${blockDate.getDate()}`;
+    
+    // Find the explicit log for this date (Prevents the invisible shifting bug!)
+    const exactLog = currentLogs.find((l: any) => l.date === dateString);
+
+    return { dayNum, state: generateBlockState(exactLog), log: exactLog, dateLabel };
   });
+
+  // Calculate the 28-day window slices
+  const totalPages = Math.ceil(75 / 28);
+  const visibleBlocks = calendarBlocks.slice(calendarPage * 28, (calendarPage + 1) * 28);
 
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-50 px-4 pb-4 pt-[calc(env(safe-area-inset-top)+16px)] sm:px-6 sm:pb-6 sm:pt-[calc(env(safe-area-inset-top)+24px)] font-sans overflow-x-hidden pb-32 relative">
@@ -334,57 +357,90 @@ export default function SquadDirectoryDashboard() {
           </div>
         </div>
 
-        {/* CURRENT 75-DAY GRID */}
+        {/* CURRENT 75-DAY GRID (28-Day Pagination View) */}
         <div>
-          <h3 className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest mb-3 flex items-center gap-2"><CheckCircle size={14}/> Active 75-Day Protocol</h3>
-          <div className="bg-neutral-900/20 p-5 rounded-3xl border border-neutral-800/30 backdrop-blur-xl">
-            <div className="grid grid-cols-7 gap-2 sm:gap-3">
-              {calendarBlocks.map((block, idx) => {
-                const log = block.log;
-                const currentWater = log ? (log.waterTotal || 0) : 0;
-                
-                const isW1 = log?.workout1?.done;
-                const isW2 = log?.workout2?.done;
-                const isWater = currentWater >= targetNativeWaterGoal;
-                const isRead = log && (log.readingTotal || 0) >= readingTarget;
-                const isDiet = log?.diet;
-                const isPhoto = log?.photoStorageId;
-
-                let blockBg = "bg-neutral-900/50 border-neutral-800 text-neutral-600";
-                if (block.state === "success") {
-                  blockBg = "bg-gradient-to-b from-emerald-500/20 to-emerald-900/40 border-emerald-500/50 text-emerald-100 shadow-[0_0_15px_rgba(16,185,129,0.15)]"; 
-                } else if (block.state === "pending") {
-                  blockBg = "bg-neutral-900 border-neutral-700 text-white hover:bg-neutral-800"; 
-                } else if (block.state === "failed") {
-                  blockBg = "bg-red-950/30 border-red-900/50 text-red-500";
-                }
-
-                return (
-                  <motion.button 
-                    key={block.dayNum} 
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: (idx % 14) * 0.02 }}
-                    disabled={block.state === "future"}
-                    onClick={() => block.log && openLogDay({ ...block.log, dayNum: block.dayNum })}
-                    className={`relative w-full aspect-square rounded-xl border flex flex-col items-center justify-center transition-all duration-300 font-extrabold text-xs sm:text-sm tracking-tighter ${blockBg} overflow-hidden`}
-                  >
-                    <span className="relative z-20 mb-2">{block.dayNum}</span>
-                    
-                    {block.state !== "future" && (
-                      <div className="absolute bottom-1.5 left-1.5 right-1.5 flex gap-[1px] h-1 sm:h-1.5">
-                        <div className={`flex-1 rounded-sm transition-colors ${isW1 ? 'bg-orange-500' : 'bg-neutral-800/80'}`} />
-                        <div className={`flex-1 rounded-sm transition-colors ${isW2 ? 'bg-violet-500' : 'bg-neutral-800/80'}`} />
-                        <div className={`flex-1 rounded-sm transition-colors ${isWater ? 'bg-blue-500' : 'bg-neutral-800/80'}`} />
-                        <div className={`flex-1 rounded-sm transition-colors ${isRead ? 'bg-amber-500' : 'bg-neutral-800/80'}`} />
-                        <div className={`flex-1 rounded-sm transition-colors ${isDiet ? 'bg-emerald-500' : 'bg-red-500'}`} />
-                        <div className={`flex-1 rounded-sm transition-colors ${isPhoto ? 'bg-cyan-500' : 'bg-neutral-800/80'}`} />
-                      </div>
-                    )}
-                  </motion.button>
-                );
-              })}
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest flex items-center gap-2"><CheckCircle size={14}/> Active 75-Day Protocol</h3>
+            
+            {/* Pagination Controls */}
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={() => setCalendarPage(p => Math.max(0, p - 1))}
+                disabled={calendarPage === 0}
+                className="p-1 rounded bg-neutral-900 border border-neutral-800 hover:bg-neutral-800 disabled:opacity-30 transition-colors"
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <span className="text-[9px] font-black text-neutral-500 uppercase tracking-widest">
+                Days {calendarPage * 28 + 1} - {Math.min((calendarPage + 1) * 28, 75)}
+              </span>
+              <button 
+                onClick={() => setCalendarPage(p => Math.min(totalPages - 1, p + 1))}
+                disabled={calendarPage === totalPages - 1}
+                className="p-1 rounded bg-neutral-900 border border-neutral-800 hover:bg-neutral-800 disabled:opacity-30 transition-colors"
+              >
+                <ChevronRight size={16} />
+              </button>
             </div>
+          </div>
+
+          <div className="bg-neutral-900/20 p-5 rounded-3xl border border-neutral-800/30 backdrop-blur-xl">
+            <AnimatePresence mode="wait">
+              <motion.div 
+                key={calendarPage}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.2 }}
+                className="grid grid-cols-7 gap-2 sm:gap-3"
+              >
+                {visibleBlocks.map((block) => {
+                  const log = block.log;
+                  const currentWater = log ? (log.waterTotal || 0) : 0;
+                  
+                  const isW1 = log?.workout1?.done;
+                  const isW2 = log?.workout2?.done;
+                  const isWater = currentWater >= targetNativeWaterGoal;
+                  const isRead = log && (log.readingTotal || 0) >= readingTarget;
+                  const isDiet = log?.diet;
+                  const isPhoto = log?.photoStorageId;
+
+                  let blockBg = "bg-neutral-900/50 border-neutral-800 text-neutral-600";
+                  if (block.state === "success") {
+                    blockBg = "bg-gradient-to-b from-emerald-500/20 to-emerald-900/40 border-emerald-500/50 text-emerald-100 shadow-[0_0_15px_rgba(16,185,129,0.15)]"; 
+                  } else if (block.state === "pending") {
+                    blockBg = "bg-neutral-900 border-neutral-700 text-white hover:bg-neutral-800"; 
+                  } else if (block.state === "failed") {
+                    blockBg = "bg-red-950/30 border-red-900/50 text-red-500";
+                  }
+
+                  return (
+                    <button 
+                      key={block.dayNum} 
+                      disabled={block.state === "future"}
+                      onClick={() => block.log && openLogDay({ ...block.log, dayNum: block.dayNum, explicitDate: block.dateLabel })}
+                      className={`relative w-full aspect-square rounded-xl border flex flex-col items-center justify-center transition-all duration-300 font-extrabold tracking-tighter ${blockBg} overflow-hidden`}
+                    >
+                      <div className="relative z-20 flex flex-col items-center mb-1.5 sm:mb-2 gap-0.5 mt-1">
+                        <span className="text-xs sm:text-sm">{block.dayNum}</span>
+                        <span className="text-[8px] sm:text-[9px] text-neutral-400 font-bold tracking-tighter opacity-80">{block.dateLabel}</span>
+                      </div>
+                      
+                      {block.state !== "future" && (
+                        <div className="absolute bottom-1.5 left-1.5 right-1.5 flex gap-[1px] h-1 sm:h-1.5">
+                          <div className={`flex-1 rounded-sm transition-colors ${isW1 ? 'bg-orange-500' : 'bg-neutral-800/80'}`} />
+                          <div className={`flex-1 rounded-sm transition-colors ${isW2 ? 'bg-violet-500' : 'bg-neutral-800/80'}`} />
+                          <div className={`flex-1 rounded-sm transition-colors ${isWater ? 'bg-blue-500' : 'bg-neutral-800/80'}`} />
+                          <div className={`flex-1 rounded-sm transition-colors ${isRead ? 'bg-amber-500' : 'bg-neutral-800/80'}`} />
+                          <div className={`flex-1 rounded-sm transition-colors ${isDiet ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                          <div className={`flex-1 rounded-sm transition-colors ${isPhoto ? 'bg-cyan-500' : 'bg-neutral-800/80'}`} />
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </motion.div>
+            </AnimatePresence>
           </div>
         </div>
 
@@ -414,7 +470,7 @@ export default function SquadDirectoryDashboard() {
                   return (
                     <button 
                       key={log._id}
-                      onClick={() => openLogDay({ ...log, dayNum: "Legacy" })}
+                      onClick={() => openLogDay({ ...log, dayNum: "Legacy", explicitDate: dateLabel })}
                       className={`flex-shrink-0 w-12 h-14 sm:w-14 sm:h-16 relative rounded-xl border flex flex-col items-center justify-center transition-all ${blockBg} overflow-hidden hover:border-neutral-600`}
                     >
                       <span className="relative z-20 text-[9px] sm:text-[10px] font-black tracking-widest mb-2 opacity-50">{dateLabel}</span>
@@ -450,7 +506,7 @@ export default function SquadDirectoryDashboard() {
               <div className="flex justify-between items-start mb-6">
                 <div>
                   <h2 className="text-2xl font-black text-white uppercase tracking-tighter">Day {selectedLogDay?.dayNum}</h2>
-                  <p className="text-emerald-500 font-bold text-xs tracking-widest uppercase mt-1">{selectedLogDay?.date}</p>
+                  <p className="text-emerald-500 font-bold text-xs tracking-widest uppercase mt-1">{selectedLogDay?.explicitDate || selectedLogDay?.date}</p>
                 </div>
                 <button onClick={handleCloseModal} className="p-2 bg-neutral-800 rounded-full text-neutral-400 hover:text-white transition-colors">
                   <ArrowLeft className="w-5 h-5 rotate-[-45deg]" />
