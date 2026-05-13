@@ -6,7 +6,6 @@ import { useState, useRef, useEffect } from "react";
 import { AnimatePresence } from "framer-motion";
 import { Camera, Settings, CheckCircle, Droplet, BookOpen, Users, Flame, Activity, ShieldCheck, Dumbbell } from "lucide-react";
 import Link from "next/link";
-import confetti from "canvas-confetti";
 import { OnboardingWizard } from "@/components/features/dashboard/OnboardingWizard";
 import { SettingsModal } from "@/components/features/dashboard/SettingsModal";
 import { WorkoutModal } from "@/components/features/dashboard/WorkoutModal";
@@ -61,7 +60,6 @@ function DashboardMain({ user }: { user: any }) {
     setWaterInputAmount(String(user?.vesselSize || 128));
   }, [user?.vesselSize]);
   
-  // --- STATE CALCULATIONS (Moved ABOVE early return so hooks don't break) ---
   const currentWaterAmountStr = log?.waterTotal || 0;
   const waterTarget = user?.vesselUnit === "liters" ? 3.78 : user?.vesselUnit === "ml" ? 3785 : 128;
   const isWaterMet = currentWaterAmountStr >= waterTarget;
@@ -74,25 +72,29 @@ function DashboardMain({ user }: { user: any }) {
 
   const isPerfectDay = isW1Met && isW2Met && isWaterMet && isPagesMet && isDisciplineMet;
 
-  // --- CONFETTI EFFECT (Must be called unconditionally) ---
+  // CRITICAL FIX: Safe, dynamic import of confetti to prevent Next.js SSR crashes
   useEffect(() => {
     if (!log) return;
     
     if (isPerfectDay && firedConfettiLogId.current !== log._id) {
-      confetti({
-        particleCount: 150,
-        spread: 80,
-        origin: { y: 0.6 },
-        colors: ['#10b981', '#34d399', '#059669', '#ffffff'],
-        disableForReducedMotion: true
-      });
+      try {
+        const fireConfetti = require("canvas-confetti");
+        fireConfetti({
+          particleCount: 150,
+          spread: 80,
+          origin: { y: 0.6 },
+          colors: ['#10b981', '#34d399', '#059669', '#ffffff'],
+          disableForReducedMotion: true
+        });
+      } catch (e) {
+        console.warn("Confetti payload failed to load:", e);
+      }
       firedConfettiLogId.current = log._id;
     } else if (!isPerfectDay && firedConfettiLogId.current === log._id) {
       firedConfettiLogId.current = null;
     }
   }, [isPerfectDay, log]);
 
-  // --- EARLY RETURN (Must happen AFTER all hooks are declared) ---
   if (log === undefined) {
     return (
       <div className="min-h-screen bg-neutral-950 flex items-center justify-center text-emerald-500 font-mono animate-pulse">

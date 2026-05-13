@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "convex/react";
+import { useQuery, useConvexAuth } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { ArrowLeft, Flame, Droplet, BookOpen, Activity, Loader2, Utensils, ShieldAlert, User, CheckCircle, Camera, X, History, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
@@ -24,7 +24,6 @@ const convertWater = (amount: number, fromUnit: string, toUnit: string) => {
   return baseMl; 
 };
 
-// Calculates the current day dynamically based on someone's start date
 const calculateDay = (startDate?: number) => {
   if (!startDate) return 1;
   const now = new Date();
@@ -39,21 +38,18 @@ const calculateDay = (startDate?: number) => {
 };
 
 export default function SquadDirectoryDashboard() {
+  const { isLoading } = useConvexAuth();
   const me = useQuery(api.logs.getMe);
   const data = useQuery(api.logs.getGlobalAggregates);
   
   const [selectedUserDetailed, setSelectedUserDetailed] = useState<any | null>(null);
   const [selectedLogDay, setSelectedLogDay] = useState<any | null>(null);
   const [expandedPhotoUrl, setExpandedPhotoUrl] = useState<string | null>(null);
-  
-  // Controls the 28-day 4x7 pagination block
   const [calendarPage, setCalendarPage] = useState(0);
 
   const openUserDetail = (member: any) => {
     window.history.pushState({ view: 'user_detail' }, "");
     setSelectedUserDetailed(member);
-    
-    // Auto-focus the calendar on the 28-day window the user is currently in
     const currentDay = calculateDay(member.user?.challengeStartDate);
     const boundedDay = Math.max(1, Math.min(currentDay, 75));
     setCalendarPage(Math.floor((boundedDay - 1) / 28));
@@ -87,7 +83,7 @@ export default function SquadDirectoryDashboard() {
     return () => window.removeEventListener("popstate", handlePopState);
   }, [expandedPhotoUrl, selectedLogDay, selectedUserDetailed]);
 
-  if (data === undefined || me === undefined) {
+  if (isLoading || data === undefined || me === undefined) {
     return (
       <div className="min-h-screen bg-neutral-950 flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-emerald-500 animate-spin" />
@@ -95,7 +91,8 @@ export default function SquadDirectoryDashboard() {
     );
   }
 
-  if (data === null) {
+  // CRITICAL FIX: Ensure 'me' is fully loaded before pulling properties to prevent null crashes
+  if (data === null || me === null) {
     return (
       <div className="min-h-screen bg-neutral-950 flex flex-col items-center justify-center p-6 text-center">
         <Activity className="w-12 h-12 text-neutral-800 mb-4" />
@@ -233,7 +230,7 @@ export default function SquadDirectoryDashboard() {
   const isMe = selectedUserDetailed.isMe;
 
   const challengeStart = targetUser.challengeStartDate ? new Date(targetUser.challengeStartDate) : new Date(0);
-  challengeStart.setHours(12,0,0,0); // Setting to noon prevents weird timezone/DST shifts
+  challengeStart.setHours(12,0,0,0);
 
   const currentLogs = allTargetLogs.filter((l: any) => new Date(l.date) >= challengeStart);
   const historyLogs = allTargetLogs.filter((l: any) => new Date(l.date) < challengeStart).sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -275,25 +272,17 @@ export default function SquadDirectoryDashboard() {
     return isHistory ? "history_pending" : "pending"; 
   };
 
-  // Re-engineered Calendar Block generation to assign precise real-world dates
   const calendarBlocks = Array.from({ length: 75 }).map((_, i) => {
     const dayNum = i + 1;
-    
-    // Calculate the absolute date for this specific block
     const blockDate = new Date(challengeStart);
     blockDate.setDate(blockDate.getDate() + i);
     const dateString = blockDate.toISOString().split("T")[0];
-    
-    // Format label for UI (e.g. "5/12")
     const dateLabel = `${blockDate.getMonth() + 1}/${blockDate.getDate()}`;
-    
-    // Find the explicit log for this date (Prevents the invisible shifting bug!)
     const exactLog = currentLogs.find((l: any) => l.date === dateString);
 
     return { dayNum, state: generateBlockState(exactLog), log: exactLog, dateLabel };
   });
 
-  // Calculate the 28-day window slices
   const totalPages = Math.ceil(75 / 28);
   const visibleBlocks = calendarBlocks.slice(calendarPage * 28, (calendarPage + 1) * 28);
 
@@ -361,8 +350,6 @@ export default function SquadDirectoryDashboard() {
         <div>
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest flex items-center gap-2"><CheckCircle size={14}/> Active 75-Day Protocol</h3>
-            
-            {/* Pagination Controls */}
             <div className="flex items-center gap-3">
               <button 
                 onClick={() => setCalendarPage(p => Math.max(0, p - 1))}
@@ -515,8 +502,9 @@ export default function SquadDirectoryDashboard() {
               
               <div className="space-y-4">
                 <div className="grid grid-cols-3 gap-2 mb-4">
+                  {/* CRITICAL FIX: Only light up the icons if they ACTUALLY hit the target goal, stopping the UI lie */}
                   <div className="bg-neutral-950 border border-neutral-800/80 p-3 rounded-xl flex flex-col items-center justify-center gap-1">
-                    <Droplet size={14} className={(selectedLogDay?.waterTotal || 0) > 0 ? "text-blue-500" : "text-neutral-600"} />
+                    <Droplet size={14} className={(selectedLogDay?.waterTotal || 0) >= targetNativeWaterGoal ? "text-blue-500" : "text-neutral-600"} />
                     {canViewWater ? (
                       <>
                         <span className="font-black text-white text-base">
@@ -530,7 +518,7 @@ export default function SquadDirectoryDashboard() {
                   </div>
 
                   <div className="bg-neutral-950 border border-neutral-800/80 p-3 rounded-xl flex flex-col items-center justify-center gap-1">
-                    <BookOpen size={14} className={(selectedLogDay?.readingTotal || 0) > 0 ? "text-amber-500" : "text-neutral-600"} />
+                    <BookOpen size={14} className={(selectedLogDay?.readingTotal || 0) >= readingTarget ? "text-amber-500" : "text-neutral-600"} />
                     {canViewReading ? (
                       <>
                         <span className="font-black text-white text-base">{selectedLogDay?.readingTotal || 0}</span>
