@@ -26,38 +26,38 @@ export default function LandingPage() {
         </h1>
         
         <p className="text-neutral-400 text-lg sm:text-xl font-bold max-w-xl mb-12 leading-relaxed">
-          The ultimate protocol engine. Lock in your habits, track your telemetry, and sync with your accountability squad. No excuses.
+          The ultimate tracking engine. Lock in your habits, log your progress, and stay accountable with your friends. No excuses.
         </p>
 
         <div className="grid sm:grid-cols-3 gap-6 w-full mb-16 text-left">
           <div className="bg-neutral-900/50 border border-neutral-800 p-5 rounded-2xl">
             <Target className="text-emerald-500 mb-3" size={24} />
-            <h3 className="text-white font-bold uppercase tracking-widest text-xs mb-2">Track Protocol</h3>
-            <p className="text-neutral-500 text-xs leading-relaxed">Log 2 workouts, hydration, reading, and progress photos daily.</p>
+            <h3 className="text-white font-bold uppercase tracking-widest text-xs mb-2">Track Daily</h3>
+            <p className="text-neutral-500 text-xs leading-relaxed">Log 2 workouts, your water intake, reading, and progress photos daily.</p>
           </div>
           <div className="bg-neutral-900/50 border border-neutral-800 p-5 rounded-2xl">
             <Users className="text-emerald-500 mb-3" size={24} />
-            <h3 className="text-white font-bold uppercase tracking-widest text-xs mb-2">Squad Grid</h3>
-            <p className="text-neutral-500 text-xs leading-relaxed">Create a private vault to track your friends' live progress.</p>
+            <h3 className="text-white font-bold uppercase tracking-widest text-xs mb-2">Friend Group</h3>
+            <p className="text-neutral-500 text-xs leading-relaxed">Create a private group to track your friends' live progress every day.</p>
           </div>
           <div className="bg-neutral-900/50 border border-neutral-800 p-5 rounded-2xl">
             <ShieldCheck className="text-emerald-500 mb-3" size={24} />
             <h3 className="text-white font-bold uppercase tracking-widest text-xs mb-2">Privacy Control</h3>
-            <p className="text-neutral-500 text-xs leading-relaxed">Strict broadcast limits. Hide calories or photos from the group.</p>
+            <p className="text-neutral-500 text-xs leading-relaxed">Strict sharing limits. Hide calories or sensitive photos from the group.</p>
           </div>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto pb-12 sm:pb-0">
-          {/* CRITICAL FIX: Removed mode="modal" so it redirects to Clerk's unblockable hosted UI */}
+          {/* CRITICAL FIX: These are back to being <div> tags to prevent React DOM nesting crashes */}
           <SignUpButton forceRedirectUrl="/dashboard">
-            <button className="px-10 py-5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-black tracking-widest uppercase text-sm transition-all shadow-[0_0_30px_rgba(16,185,129,0.3)] active:scale-95">
-              Initialize Protocol
-            </button>
+            <div className="px-10 py-5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-black tracking-widest uppercase text-sm transition-all shadow-[0_0_30px_rgba(16,185,129,0.3)] cursor-pointer">
+              Start Challenge
+            </div>
           </SignUpButton>
           <SignInButton forceRedirectUrl="/dashboard">
-            <button className="px-10 py-5 rounded-2xl bg-transparent border border-neutral-800 hover:bg-neutral-900 text-white font-black tracking-widest uppercase text-sm transition-all active:scale-95">
-              Login
-            </button>
+            <div className="px-10 py-5 rounded-2xl bg-transparent border border-neutral-800 hover:bg-neutral-900 text-white font-black tracking-widest uppercase text-sm transition-all cursor-pointer">
+              Log In
+            </div>
           </SignInButton>
         </div>
       </main>

@@ -58,9 +58,6 @@ export function OnboardingWizard({ user }: { user: any }) {
         await joinSquad({ squadId: squadIdInput });
       }
       
-      // Removed window.location.reload(). 
-      // Convex is reactive. hasCompletedSetup becomes true in the DB, 
-      // the useQuery updates instantly, and this component unmounts.
     } catch (err) {
       console.error("Setup failed:", err);
       setIsSubmitting(false); 
@@ -76,8 +73,8 @@ export function OnboardingWizard({ user }: { user: any }) {
           <div className="w-16 h-16 bg-neutral-900 border border-neutral-800 rounded-2xl flex items-center justify-center mx-auto mb-6">
             <ShieldCheck size={28} className="text-emerald-500" />
           </div>
-          <h1 className="text-3xl font-black text-white uppercase tracking-tight">Initialization</h1>
-          <p className="text-neutral-500 text-sm">Configure your telemetry before entering the grid.</p>
+          <h1 className="text-3xl font-black text-white uppercase tracking-tight">Welcome to Gritify</h1>
+          <p className="text-neutral-500 text-sm">Let's get your tracking preferences set up.</p>
         </div>
 
         <div className="flex justify-center gap-2 mb-8">
@@ -89,11 +86,11 @@ export function OnboardingWizard({ user }: { user: any }) {
         <AnimatePresence mode="wait">
           {step === 1 && (
             <motion.div key="step1" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6 bg-neutral-900/50 p-6 rounded-3xl border border-neutral-800">
-              <h2 className="text-sm font-black uppercase text-emerald-500 tracking-widest flex items-center gap-2"><Activity size={16}/> Base Metrics</h2>
+              <h2 className="text-sm font-black uppercase text-emerald-500 tracking-widest flex items-center gap-2"><Activity size={16}/> Basic Setup</h2>
               
               <div className="flex gap-2">
                 <div className="flex-1">
-                  <label className="block text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-2">Vessel Size</label>
+                  <label className="block text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-2">Water Bottle Size</label>
                   <input type="number" placeholder="e.g. 40" value={vesselSizeInput} onChange={e => setVesselSizeInput(e.target.value)} className="w-full bg-neutral-950 border border-neutral-800 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500 font-mono text-sm" />
                 </div>
                 <div className="w-1/3">
@@ -104,7 +101,7 @@ export function OnboardingWizard({ user }: { user: any }) {
               <div>
                 <div className="flex gap-2">
                   <div className="flex-1">
-                    <label className="block text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-2">Weight <span className="lowercase text-neutral-600">(optional)*</span></label>
+                    <label className="block text-[10px] font-bold text-neutral-500 uppercase tracking-widest mb-2">Body Weight <span className="lowercase text-neutral-600">(optional)</span></label>
                     <input type="number" placeholder="e.g. 160" value={bodyWeightInput} onChange={e => setBodyWeightInput(e.target.value)} className="w-full bg-neutral-950 border border-neutral-800 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500 font-mono text-sm" />
                   </div>
                   <div className="w-1/3">
@@ -113,7 +110,7 @@ export function OnboardingWizard({ user }: { user: any }) {
                   </div>
                 </div>
                 <p className="text-[10px] text-neutral-500 font-mono mt-2 leading-tight">
-                  *If provided, weight is only used to personalize your active calorie burn estimations.
+                  *If provided, weight is only used to estimate your calorie burn.
                 </p>
               </div>
               <button 
@@ -128,8 +125,8 @@ export function OnboardingWizard({ user }: { user: any }) {
 
           {step === 2 && (
             <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6 bg-neutral-900/50 p-6 rounded-3xl border border-neutral-800">
-              <h2 className="text-sm font-black uppercase text-emerald-500 tracking-widest flex items-center gap-2"><Users size={16}/> Squad Network</h2>
-              <p className="text-[10px] text-neutral-400 uppercase tracking-widest font-bold leading-relaxed">Enter a shared Squad ID to link your data with an accountability group. You can leave this blank and join later. (First to join an ID becomes Admin).</p>
+              <h2 className="text-sm font-black uppercase text-emerald-500 tracking-widest flex items-center gap-2"><Users size={16}/> Join a Group</h2>
+              <p className="text-[10px] text-neutral-400 uppercase tracking-widest font-bold leading-relaxed">Enter a group code to share your progress with friends. You can leave this blank and join a group later.</p>
               
               <div>
                 <input type="text" placeholder="e.g. alpha-squad" value={squadIdInput} onChange={e => setSquadIdInput(e.target.value)} className="w-full bg-neutral-950 border border-neutral-800 rounded-2xl px-4 py-4 text-white focus:outline-none focus:border-emerald-500 font-mono text-sm" />
@@ -144,8 +141,8 @@ export function OnboardingWizard({ user }: { user: any }) {
 
           {step === 3 && (
             <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6 bg-neutral-900/50 p-6 rounded-3xl border border-neutral-800">
-              <h2 className="text-sm font-black uppercase text-emerald-500 tracking-widest flex items-center gap-2"><Shield size={16}/> Global Privacy</h2>
-              <p className="text-[10px] text-neutral-400 uppercase tracking-widest font-bold leading-relaxed mb-4">Control what your squad can see. (You can configure specific 'Close Friends' in settings later).</p>
+              <h2 className="text-sm font-black uppercase text-emerald-500 tracking-widest flex items-center gap-2"><Shield size={16}/> Privacy Settings</h2>
+              <p className="text-[10px] text-neutral-400 uppercase tracking-widest font-bold leading-relaxed mb-4">Who is allowed to see your daily logs?</p>
               
               <div className="space-y-4">
                 {[
@@ -168,39 +165,38 @@ export function OnboardingWizard({ user }: { user: any }) {
 
               <div className="flex gap-3 pt-6 border-t border-neutral-800">
                 <button onClick={() => setStep(2)} className="px-4 py-4 bg-neutral-800 text-white rounded-2xl hover:bg-neutral-700 transition-colors"><ArrowLeft size={18}/></button>
-                <button onClick={() => setStep(4)} className="flex-1 py-4 bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-black tracking-widest rounded-2xl transition-all uppercase text-xs">Briefing &rarr;</button>
+                <button onClick={() => setStep(4)} className="flex-1 py-4 bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-black tracking-widest rounded-2xl transition-all uppercase text-xs">Quick Tour &rarr;</button>
               </div>
             </motion.div>
           )}
 
-          {/* NEW STEP: PROTOCOL BRIEFING (TUTORIAL) */}
           {step === 4 && (
             <motion.div key="step4" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="space-y-6 bg-neutral-900/50 p-6 rounded-3xl border border-neutral-800">
-              <h2 className="text-sm font-black uppercase text-emerald-500 tracking-widest flex items-center gap-2"><BookOpen size={16}/> Protocol Briefing</h2>
-              <p className="text-[10px] text-neutral-400 uppercase tracking-widest font-bold leading-relaxed mb-4">You are about to drop into the Command Center. Here is how to navigate.</p>
+              <h2 className="text-sm font-black uppercase text-emerald-500 tracking-widest flex items-center gap-2"><BookOpen size={16}/> Quick Tour</h2>
+              <p className="text-[10px] text-neutral-400 uppercase tracking-widest font-bold leading-relaxed mb-4">Here is how to navigate the app.</p>
               
               <div className="space-y-3">
                 <div className="flex items-start gap-3 bg-neutral-950 border border-neutral-800 p-3 rounded-xl">
                   <Activity size={18} className="text-emerald-500 shrink-0 mt-0.5" />
                   <div>
-                    <h3 className="text-[10px] font-black text-white uppercase tracking-widest">Command Center</h3>
-                    <p className="text-[9px] text-neutral-500 uppercase tracking-widest mt-1 leading-relaxed">Your main dashboard. Log your 2x45min workouts, water, reading, diet, and progress photo daily.</p>
+                    <h3 className="text-[10px] font-black text-white uppercase tracking-widest">Daily Tracker</h3>
+                    <p className="text-[9px] text-neutral-500 uppercase tracking-widest mt-1 leading-relaxed">This is your home screen. Log your 2 workouts, water, reading, diet, and progress photo here daily.</p>
                   </div>
                 </div>
                 
                 <div className="flex items-start gap-3 bg-neutral-950 border border-neutral-800 p-3 rounded-xl">
                   <Users size={18} className="text-emerald-500 shrink-0 mt-0.5" />
                   <div>
-                    <h3 className="text-[10px] font-black text-white uppercase tracking-widest">Squad Grid</h3>
-                    <p className="text-[9px] text-neutral-500 uppercase tracking-widest mt-1 leading-relaxed">Access via the top right. View your 75-day calendar, lifetime stats, and your squad's live telemetry.</p>
+                    <h3 className="text-[10px] font-black text-white uppercase tracking-widest">Friends & Calendar</h3>
+                    <p className="text-[9px] text-neutral-500 uppercase tracking-widest mt-1 leading-relaxed">Click the "SQUAD" button in the top right to view your 75-day calendar and check on your friends.</p>
                   </div>
                 </div>
 
                 <div className="flex items-start gap-3 bg-neutral-950 border border-neutral-800 p-3 rounded-xl">
                   <ShieldCheck size={18} className="text-emerald-500 shrink-0 mt-0.5" />
                   <div>
-                    <h3 className="text-[10px] font-black text-white uppercase tracking-widest">Settings & Resets</h3>
-                    <p className="text-[9px] text-neutral-500 uppercase tracking-widest mt-1 leading-relaxed">Access via the top left gear. If you compromise the protocol, you reset to Day 1 here.</p>
+                    <h3 className="text-[10px] font-black text-white uppercase tracking-widest">Settings & Starting Over</h3>
+                    <p className="text-[9px] text-neutral-500 uppercase tracking-widest mt-1 leading-relaxed">Click the gear icon in the top left to change settings. If you miss a day, this is where you reset to Day 1.</p>
                   </div>
                 </div>
               </div>
@@ -208,7 +204,7 @@ export function OnboardingWizard({ user }: { user: any }) {
               <div className="flex gap-3 pt-6 border-t border-neutral-800">
                 <button onClick={() => setStep(3)} disabled={isSubmitting} className="px-4 py-4 bg-neutral-800 text-white rounded-2xl hover:bg-neutral-700 transition-colors disabled:opacity-50"><ArrowLeft size={18}/></button>
                 <button onClick={completeSetup} disabled={isSubmitting} className="flex-1 py-4 bg-gradient-to-r from-emerald-400 to-emerald-600 text-emerald-950 font-black tracking-widest rounded-2xl transition-all uppercase text-xs shadow-[0_0_20px_rgba(16,185,129,0.3)] flex justify-center items-center">
-                  {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : "Acknowledge & Enter"}
+                  {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : "Finish Setup"}
                 </button>
               </div>
             </motion.div>
