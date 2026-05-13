@@ -91,7 +91,6 @@ export default function SquadDirectoryDashboard() {
     );
   }
 
-  // CRITICAL FIX: Ensure 'me' is fully loaded before pulling properties to prevent null crashes
   if (data === null || me === null) {
     return (
       <div className="min-h-screen bg-neutral-950 flex flex-col items-center justify-center p-6 text-center">
@@ -371,7 +370,7 @@ export default function SquadDirectoryDashboard() {
             </div>
           </div>
 
-          <div className="bg-neutral-900/20 p-5 rounded-3xl border border-neutral-800/30 backdrop-blur-xl">
+          <div className="bg-neutral-900/20 p-4 sm:p-5 rounded-3xl border border-neutral-800/30 backdrop-blur-xl">
             <AnimatePresence mode="wait">
               <motion.div 
                 key={calendarPage}
@@ -379,7 +378,8 @@ export default function SquadDirectoryDashboard() {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.2 }}
-                className="grid grid-cols-7 gap-2 sm:gap-3"
+                {/* CRITICAL FIX: gap-1 on mobile saves horizontal space for squares, gap-3 on desktop */}
+                className="grid grid-cols-7 gap-1 sm:gap-3"
               >
                 {visibleBlocks.map((block) => {
                   const log = block.log;
@@ -406,15 +406,18 @@ export default function SquadDirectoryDashboard() {
                       key={block.dayNum} 
                       disabled={block.state === "future"}
                       onClick={() => block.log && openLogDay({ ...block.log, dayNum: block.dayNum, explicitDate: block.dateLabel })}
-                      className={`relative w-full aspect-square rounded-xl border flex flex-col items-center justify-center transition-all duration-300 font-extrabold tracking-tighter ${blockBg} overflow-hidden`}
+                      {/* CRITICAL FIX: slightly smaller rounding on mobile to fit the tighter gaps */}
+                      className={`relative w-full aspect-square rounded-lg sm:rounded-xl border flex flex-col items-center justify-center transition-all duration-300 font-extrabold tracking-tighter ${blockBg} overflow-hidden`}
                     >
-                      <div className="relative z-20 flex flex-col items-center mb-1.5 sm:mb-2 gap-0.5 mt-1">
-                        <span className="text-xs sm:text-sm">{block.dayNum}</span>
-                        <span className="text-[8px] sm:text-[9px] text-neutral-400 font-bold tracking-tighter opacity-80">{block.dateLabel}</span>
+                      {/* CRITICAL FIX: shifted up on mobile, tightened gap, forced leading-none to stop invisible overlap */}
+                      <div className="relative z-20 flex flex-col items-center justify-center -mt-1 sm:mt-0 mb-1 sm:mb-2 gap-0 sm:gap-0.5">
+                        <span className="text-[10px] sm:text-sm leading-none">{block.dayNum}</span>
+                        <span className="text-[7px] sm:text-[9px] text-neutral-400 font-bold tracking-tighter opacity-80 leading-none mt-[1px]">{block.dateLabel}</span>
                       </div>
                       
                       {block.state !== "future" && (
-                        <div className="absolute bottom-1.5 left-1.5 right-1.5 flex gap-[1px] h-1 sm:h-1.5">
+                        {/* CRITICAL FIX: slightly thinner progress bars on mobile so they don't hit the text */}
+                        <div className="absolute bottom-1 sm:bottom-1.5 left-1 sm:left-1.5 right-1 sm:right-1.5 flex gap-[1px] h-[3px] sm:h-1.5">
                           <div className={`flex-1 rounded-sm transition-colors ${isW1 ? 'bg-orange-500' : 'bg-neutral-800/80'}`} />
                           <div className={`flex-1 rounded-sm transition-colors ${isW2 ? 'bg-violet-500' : 'bg-neutral-800/80'}`} />
                           <div className={`flex-1 rounded-sm transition-colors ${isWater ? 'bg-blue-500' : 'bg-neutral-800/80'}`} />
@@ -502,7 +505,6 @@ export default function SquadDirectoryDashboard() {
               
               <div className="space-y-4">
                 <div className="grid grid-cols-3 gap-2 mb-4">
-                  {/* CRITICAL FIX: Only light up the icons if they ACTUALLY hit the target goal, stopping the UI lie */}
                   <div className="bg-neutral-950 border border-neutral-800/80 p-3 rounded-xl flex flex-col items-center justify-center gap-1">
                     <Droplet size={14} className={(selectedLogDay?.waterTotal || 0) >= targetNativeWaterGoal ? "text-blue-500" : "text-neutral-600"} />
                     {canViewWater ? (
