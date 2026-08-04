@@ -367,6 +367,217 @@ export const updateLog = mutation({
   },
 });
 
+export const createHabit = mutation({
+  args: {
+    name: v.string(),
+    type: v.union(v.literal("yes_no"), v.literal("numeric"), v.literal("likert")),
+    goalValue: v.number(),
+    goalDirection: v.union(v.literal(">="), v.literal("<="), v.literal("==")),
+    frequency: v.union(v.literal("daily"), v.literal("specific_days"), v.literal("weekly")),
+    daysOfWeek: v.optional(v.array(v.number())),
+  },
+  handler: async (ctx, args) => {
+    const user = await getOrCreateUser(ctx);
+    const habitId = await ctx.db.insert("habits", {
+      ...args,
+      creatorId: user._id,
+    });
+    await ctx.db.insert("userHabits", {
+      userId: user._id,
+      habitId,
+      isActive: true,
+    });
+    return habitId;
+  }
+});
+
+export const toggleUserHabit = mutation({
+  args: { habitId: v.id("habits"), isActive: v.boolean() },
+  handler: async (ctx, args) => {
+    const user = await getOrCreateUser(ctx);
+    const existing = await ctx.db
+      .query("userHabits")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .filter((q) => q.eq(q.field("habitId"), args.habitId))
+      .first();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, { isActive: args.isActive });
+    } else {
+      await ctx.db.insert("userHabits", {
+        userId: user._id,
+        habitId: args.habitId,
+        isActive: args.isActive,
+      });
+    }
+  }
+});
+
+export const getUserActiveHabits = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getUser(ctx);
+    if (!user) return [];
+    
+    const userHabits = await ctx.db
+      .query("userHabits")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .filter((q) => q.eq(q.field("isActive"), true))
+      .collect();
+      
+    const populated = await Promise.all(
+      userHabits.map(async (uh) => {
+        const h = await ctx.db.get(uh.habitId);
+        return { userHabitId: uh._id, ...h };
+      })
+    );
+    return populated;
+  }
+});
+
+export const logCustomHabit = mutation({
+  args: {
+    habitId: v.id("habits"),
+    completed: v.boolean(),
+    numericValue: v.optional(v.number()),
+    likertValue: v.optional(v.number()),
+    note: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await getOrCreateUser(ctx);
+    const today = getAdjustedToday();
+
+    let log = await ctx.db
+      .query("dailyLogs")
+      .withIndex("by_user_date", (q) => q.eq("userId", user._id).eq("date", today))
+      .first();
+
+    if (!log) {
+      const dummyChallengeId = await ctx.db.insert("challenges", {
+        participants: [user._id],
+        startDate: Date.now(),
+        isActive: true,
+      });
+      const logId = await ctx.db.insert("dailyLogs", {
+        userId: user._id,
+        challengeId: dummyChallengeId,
+        date: today,
+        workout1: { done: false, notes: "", cals: 0 },
+        workout2: { done: false, notes: "", cals: 0 },
+        waterTotal: 0,
+        readingTotal: 0,
+        diet: false,
+        qAndA: [],
+        status: "on_time",
+        habitEntries: [],
+      });
+      log = await ctx.db.get(logId);
+    }
+
+    const currentEntries = log!.habitEntries || [];
+    const entryIndex = currentEntries.findIndex(e => e.habitId === args.habitId);
+    
+    if (entryIndex >= 0) {
+      currentEntries[entryIndex] = { ...currentEntries[entryIndex], ...args };
+    } else {
+      currentEntries.push({
+        habitId: args.habitId,
+        completed: args.completed,
+        numericValue: args.numericValue,
+        likertValue: args.likertValue,
+        note: args.note,
+      });
+    }
+
+    await ctx.db.patch(log!._id, { habitEntries: currentEntries });
+
+    // PERFECT DAY CHECK (Daily Habits Only)
+    const activeHabits = await ctx.db
+      .query("userHabits")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .filter((q) => q.eq(q.field("isActive"), true))
+      .collect();
+
+    let allDailyMet = true;
+    let hasDailyHabits = false;
+    
+    for (const uh of activeHabits) {
+      const h = await ctx.db.get(uh.habitId);
+      if (h?.frequency === "daily") {
+        hasDailyHabits = true;
+        const entry = currentEntries.find(e => e.habitId === h._id);
+        
+        // Evaluate success based on goal direction
+        let metGoal = false;
+        if (entry) {
+          if (h.type === "yes_no") {
+            metGoal = entry.completed;
+          } else if (h.type === "numeric" && entry.numericValue !== undefined) {
+            if (h.goalDirection === ">=") metGoal = entry.numericValue >= h.goalValue;
+            else if (h.goalDirection === "<=") metGoal = entry.numericValue <= h.goalValue;
+            else metGoal = entry.numericValue === h.goalValue;
+          } else if (h.type === "likert" && entry.likertValue !== undefined) {
+            if (h.goalDirection === ">=") metGoal = entry.likertValue >= h.goalValue;
+            else if (h.goalDirection === "<=") metGoal = entry.likertValue <= h.goalValue;
+            else metGoal = entry.likertValue === h.goalValue;
+          }
+        }
+        
+        if (!metGoal) {
+          allDailyMet = false;
+          break;
+        }
+      }
+    }
+
+    // Determine if this exact action triggered the perfect day
+    // We check if it wasn't a perfect day before this log, and now it is.
+    // For simplicity, we just trigger if it's met, but in a real app we'd track previous state.
+    // Actually, we can check if it was met in the previous state by evaluating currentEntries WITHOUT this new entry.
+    // For now, if allDailyMet and hasDailyHabits, we could trigger a push. But to avoid spam, we should only trigger when transitioning.
+    const prevEntries = log!.habitEntries || [];
+    let wasPerfect = true;
+    if (!hasDailyHabits) wasPerfect = false;
+    
+    for (const uh of activeHabits) {
+      const h = await ctx.db.get(uh.habitId);
+      if (h?.frequency === "daily") {
+        const entry = prevEntries.find(e => e.habitId === h._id);
+        let metGoal = false;
+        if (entry) {
+          if (h.type === "yes_no") metGoal = entry.completed;
+          else if (h.type === "numeric" && entry.numericValue !== undefined) {
+            if (h.goalDirection === ">=") metGoal = entry.numericValue >= h.goalValue;
+            else if (h.goalDirection === "<=") metGoal = entry.numericValue <= h.goalValue;
+            else metGoal = entry.numericValue === h.goalValue;
+          }
+        }
+        if (!metGoal) {
+          wasPerfect = false;
+          break;
+        }
+      }
+    }
+
+    const habitData = await ctx.db.get(args.habitId);
+    let actionType = `Logged ${habitData?.name || "a habit"}`;
+
+    if (!wasPerfect && allDailyMet && hasDailyHabits) {
+      actionType = "Completed a PERFECT DAY! 🏆";
+    }
+
+    if (user.squadId) {
+      await ctx.scheduler.runAfter(0, (internal as any).push.notifyPartnerAction, {
+        userId: user._id,
+        userName: user.name,
+        actionType,
+      });
+    }
+
+    return { success: true, isPerfectDay: allDailyMet && hasDailyHabits };
+  }
+});
+
 export const getGlobalAggregates = query({
   args: {},
   handler: async (ctx) => {

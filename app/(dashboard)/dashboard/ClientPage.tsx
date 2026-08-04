@@ -4,11 +4,10 @@ import { useQuery, useMutation, useConvexAuth } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useState, useRef, useEffect } from "react";
 import { AnimatePresence } from "framer-motion";
-import { Camera, Settings, CheckCircle, Droplet, BookOpen, Users, Flame, Activity, ShieldCheck, Dumbbell } from "lucide-react";
+import { Settings, Users, Activity, CheckCircle } from "lucide-react";
 import Link from "next/link";
 import { OnboardingWizard } from "@/components/features/dashboard/OnboardingWizard";
 import { SettingsModal } from "@/components/features/dashboard/SettingsModal";
-import { WorkoutModal } from "@/components/features/dashboard/WorkoutModal";
 
 export default function DashboardClient() {
   const { isLoading } = useConvexAuth(); 
@@ -45,34 +44,37 @@ export default function DashboardClient() {
 
 function DashboardMain({ user }: { user: any }) {
   const log = useQuery(api.logs.getTodayLog);
-  const updateLog = useMutation(api.logs.updateLog);
-  const generateUploadUrl = useMutation(api.logs.generateUploadUrl);
+  const activeHabits = useQuery(api.logs.getUserActiveHabits);
+  const logHabit = useMutation(api.logs.logCustomHabit);
   
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [isPhotoUploading, setIsPhotoUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [workoutPanelOpen, setWorkoutPanelOpen] = useState<"workout1" | "workout2" | null>(null);
-
-  const [waterInputAmount, setWaterInputAmount] = useState<string>(String(user?.vesselSize || 128));
   const firedConfettiLogId = useRef<string | null>(null);
 
-  useEffect(() => {
-    setWaterInputAmount(String(user?.vesselSize || 128));
-  }, [user?.vesselSize]);
-  
-  const currentWaterAmountStr = log?.waterTotal || 0;
-  const waterTarget = user?.vesselUnit === "liters" ? 3.78 : user?.vesselUnit === "ml" ? 3785 : 128;
-  const isWaterMet = currentWaterAmountStr >= waterTarget;
-  
-  const readingGoal = user?.dailyReadingGoal || 10; 
-  const isPagesMet = log ? (log?.readingTotal || 0) >= readingGoal : false;
-  const isW1Met = !!log?.workout1?.done;
-  const isW2Met = !!log?.workout2?.done;
-  const isDisciplineMet = !!(log?.diet && log?.photoStorageId);
+  // Helper to determine if a habit is met today
+  const getHabitStatus = (habit: any) => {
+    if (!log || !log.habitEntries) return { met: false, entry: null };
+    const entry = log.habitEntries.find((e: any) => e.habitId === habit._id);
+    if (!entry) return { met: false, entry: null };
 
-  const isPerfectDay = isW1Met && isW2Met && isWaterMet && isPagesMet && isDisciplineMet;
+    let met = false;
+    if (habit.type === "yes_no") met = entry.completed;
+    else if (habit.type === "numeric" && entry.numericValue !== undefined) {
+      if (habit.goalDirection === ">=") met = entry.numericValue >= habit.goalValue;
+      else if (habit.goalDirection === "<=") met = entry.numericValue <= habit.goalValue;
+      else met = entry.numericValue === habit.goalValue;
+    } else if (habit.type === "likert" && entry.likertValue !== undefined) {
+      if (habit.goalDirection === ">=") met = entry.likertValue >= habit.goalValue;
+      else if (habit.goalDirection === "<=") met = entry.likertValue <= habit.goalValue;
+      else met = entry.likertValue === habit.goalValue;
+    }
+    return { met, entry };
+  };
 
-  // CRITICAL FIX: Safe, dynamic import of confetti to prevent Next.js SSR crashes
+  const dailyHabits = activeHabits?.filter((h: any) => h.frequency === "daily") || [];
+  const weeklyHabits = activeHabits?.filter((h: any) => h.frequency === "weekly") || [];
+
+  const isPerfectDay = dailyHabits.length > 0 && dailyHabits.every((h: any) => getHabitStatus(h).met);
+
   useEffect(() => {
     if (!log) return;
     
@@ -95,7 +97,7 @@ function DashboardMain({ user }: { user: any }) {
     }
   }, [isPerfectDay, log]);
 
-  if (log === undefined) {
+  if (log === undefined || activeHabits === undefined) {
     return (
       <div className="min-h-screen bg-neutral-950 flex items-center justify-center text-emerald-500 font-mono animate-pulse">
         SYNCING GRID...
@@ -115,47 +117,6 @@ function DashboardMain({ user }: { user: any }) {
     const diffTime = Math.abs(todayObj.getTime() - start.getTime());
     currentDay = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
   }
-
-  const handleAddWaterAmount = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const amount = Number(waterInputAmount);
-    if (amount !== 0) {
-      const currentAbsoluteTotal = log?.waterTotal || 0;
-      updateLog({ waterTotal: Math.max(0, currentAbsoluteTotal + amount) });
-      setWaterInputAmount(String(user?.vesselSize || 128));
-    }
-  };
-  
-  const handleAddPages = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const pgs = Number(formData.get("pages"));
-    if (pgs !== 0) {
-      const current = log?.readingTotal || 0;
-      updateLog({ readingTotal: Math.max(0, current + pgs) });
-      e.currentTarget.reset();
-    }
-  };
-
-  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setIsPhotoUploading(true);
-    try {
-      const uploadUrl = await generateUploadUrl();
-      const result = await fetch(uploadUrl, {
-        method: "POST",
-        headers: { "Content-Type": file.type },
-        body: file,
-      });
-      const { storageId } = await result.json();
-      await updateLog({ photoStorageId: storageId });
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsPhotoUploading(false);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-neutral-900 via-neutral-950 to-neutral-950 text-neutral-50 px-4 pb-4 pt-[calc(env(safe-area-inset-top)+16px)] sm:px-6 sm:pb-6 sm:pt-[calc(env(safe-area-inset-top)+24px)] font-sans selection:bg-emerald-500/30 overflow-x-hidden">
@@ -179,173 +140,111 @@ function DashboardMain({ user }: { user: any }) {
             <Link href="/stats" className="h-10 px-4 rounded-full bg-neutral-900 border border-neutral-800 flex items-center justify-center text-emerald-500 font-bold text-xs gap-2 transition-all hover:bg-emerald-500/10 hover:border-emerald-500/50 active:scale-95 shadow-sm">
               <Users size={16} /> <span className="hidden sm:inline">SQUAD</span>
             </Link>
+            <Link href="/expedition" className="h-10 px-4 rounded-full bg-red-900/20 border border-red-500/50 flex items-center justify-center text-red-500 font-bold text-xs gap-2 transition-all hover:bg-red-500/10 hover:border-red-500 active:scale-95 shadow-sm">
+              <Activity size={16} /> <span className="hidden sm:inline">EXPEDITION</span>
+            </Link>
           </div>
         </div>
 
-        {/* WORKOUT 1 */}
-        <div className={`p-5 rounded-[24px] border backdrop-blur-md transition-all ${isW1Met ? 'bg-emerald-500/5 border-emerald-500/30' : 'bg-neutral-900/40 border-neutral-800'}`}>
-          <div className="flex justify-between items-start mb-4">
-            <div>
-              <h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2">
-                <Flame size={16} className={isW1Met ? "text-emerald-500" : "text-neutral-500"} /> Workout 1
-              </h3>
-              <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest mt-1">45 Min Outdoor Minimum</p>
+        {/* DAILY HABITS */}
+        {dailyHabits.length > 0 && (
+          <div className="mb-6">
+            <h2 className="text-xs font-black text-neutral-400 uppercase tracking-widest mb-3">Daily Protocol</h2>
+            <div className="space-y-4">
+              {dailyHabits.map((habit: any) => (
+                <HabitCard key={habit._id} habit={habit} status={getHabitStatus(habit)} logHabit={logHabit} />
+              ))}
             </div>
-            {isW1Met && <CheckCircle size={20} className="text-emerald-500 drop-shadow-[0_0_8px_rgba(16,185,129,0.4)]" />}
           </div>
-          <button 
-            onClick={() => {
-              if (log?.workout1?.done) updateLog({ workout1Done: false });
-              else setWorkoutPanelOpen("workout1");
-            }}
-            className={`w-full py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all active:scale-[0.98] ${
-              isW1Met ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-emerald-500 text-neutral-950 shadow-[0_0_20px_rgba(16,185,129,0.2)] hover:bg-emerald-400"
-            }`}
-          >
-            {isW1Met ? 'Session Verified' : 'Log Outdoor Session'}
-          </button>
-        </div>
+        )}
 
-        {/* WORKOUT 2 */}
-        <div className={`p-5 rounded-[24px] border backdrop-blur-md transition-all ${isW2Met ? 'bg-emerald-500/5 border-emerald-500/30' : 'bg-neutral-900/40 border-neutral-800'}`}>
-          <div className="flex justify-between items-start mb-4">
-            <div>
-              <h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2">
-                <Dumbbell size={16} className={isW2Met ? "text-emerald-500" : "text-neutral-500"} /> Workout 2
-              </h3>
-              <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest mt-1">45 Min Minimum</p>
+        {/* WEEKLY HABITS */}
+        {weeklyHabits.length > 0 && (
+          <div className="mb-6">
+            <h2 className="text-xs font-black text-neutral-400 uppercase tracking-widest mb-3">Weekly Objectives</h2>
+            <div className="space-y-4">
+              {weeklyHabits.map((habit: any) => (
+                <HabitCard key={habit._id} habit={habit} status={getHabitStatus(habit)} logHabit={logHabit} />
+              ))}
             </div>
-            {isW2Met && <CheckCircle size={20} className="text-emerald-500 drop-shadow-[0_0_8px_rgba(16,185,129,0.4)]" />}
           </div>
-          <button 
-            onClick={() => {
-              if (log?.workout2?.done) updateLog({ workout2Done: false });
-              else setWorkoutPanelOpen("workout2");
-            }}
-            className={`w-full py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all active:scale-[0.98] ${
-              isW2Met ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-emerald-500 text-neutral-950 shadow-[0_0_20px_rgba(16,185,129,0.2)] hover:bg-emerald-400"
-            }`}
-          >
-            {isW2Met ? 'Session Verified' : 'Log Indoor Session'}
-          </button>
-        </div>
+        )}
 
-        {/* HYDRATION */}
-        <div className={`p-5 rounded-[24px] border backdrop-blur-md transition-all ${isWaterMet ? 'bg-emerald-500/5 border-emerald-500/30' : 'bg-neutral-900/40 border-neutral-800'}`}>
-          <div className="flex justify-between items-start mb-2">
-            <div>
-              <h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2">
-                <Droplet size={16} className={isWaterMet ? "text-emerald-500" : "text-blue-500"} /> Hydration
-              </h3>
-              <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest mt-1">Goal: {waterTarget} {user?.vesselUnit || "oz"}</p>
-            </div>
-          </div>
-          <div className="flex items-end justify-between mt-4">
-            <div className="flex items-baseline gap-1">
-              <span className="text-5xl font-black tracking-tighter text-white">{currentWaterAmountStr.toFixed(user?.vesselUnit === "liters" ? 2 : 0)}</span>
-              <span className="text-sm font-bold text-neutral-500 mb-1">/ {waterTarget}</span>
-            </div>
-            
-            <form onSubmit={handleAddWaterAmount} className="flex gap-2 w-1/2">
-              <input 
-                type="number" 
-                value={waterInputAmount}
-                onChange={(e) => setWaterInputAmount(e.target.value)}
-                required 
-                className="w-16 bg-neutral-950 border border-neutral-800 rounded-2xl px-2 py-3 text-center text-neutral-200 font-bold focus:outline-none focus:border-emerald-500 transition-colors" 
-              />
-              <button 
-                type="submit" 
-                className={`flex-1 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all active:scale-95 ${
-                  isWaterMet ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-emerald-500 text-neutral-950 shadow-[0_0_15px_rgba(16,185,129,0.2)] hover:bg-emerald-400'
-                }`}
-              >
-                Log
-              </button>
-            </form>
-          </div>
-        </div>
-
-        {/* READING */}
-        <div className={`p-5 rounded-[24px] border backdrop-blur-md transition-all ${isPagesMet ? 'bg-emerald-500/5 border-emerald-500/30' : 'bg-neutral-900/40 border-neutral-800'}`}>
-          <div className="flex justify-between items-start mb-2">
-            <div>
-              <h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2">
-                <BookOpen size={16} className={isPagesMet ? "text-emerald-500" : "text-amber-500"} /> Reading
-              </h3>
-              <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest mt-1">Goal: {readingGoal} Pages Non-Fiction</p>
-            </div>
-          </div>
-          <div className="flex items-end justify-between mt-4">
-            <div className="flex items-baseline gap-1">
-              <span className="text-5xl font-black tracking-tighter text-white">{log?.readingTotal || 0}</span>
-              <span className="text-sm font-bold text-neutral-500 mb-1">/ {readingGoal}</span>
-            </div>
-            <form onSubmit={handleAddPages} className="flex gap-2 w-1/2">
-              <input 
-                type="number" 
-                name="pages" 
-                required 
-                defaultValue={readingGoal} 
-                className="w-16 bg-neutral-950 border border-neutral-800 rounded-2xl px-2 py-3 text-center text-neutral-200 font-bold focus:outline-none focus:border-emerald-500 transition-colors" 
-              />
-              <button 
-                type="submit" 
-                className={`flex-1 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all active:scale-95 ${
-                  isPagesMet ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-emerald-500 text-neutral-950 shadow-[0_0_15px_rgba(16,185,129,0.2)] hover:bg-emerald-400'
-                }`}
-              >
-                Log
-              </button>
-            </form>
-          </div>
-        </div>
-
-        {/* DISCIPLINE CHECKS */}
-        <div className={`p-5 rounded-[24px] border backdrop-blur-md transition-all ${isDisciplineMet ? 'bg-emerald-500/5 border-emerald-500/30' : 'bg-neutral-900/40 border-neutral-800'}`}>
-          <h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2 mb-1">
-            <ShieldCheck size={16} className={isDisciplineMet ? "text-emerald-500" : "text-neutral-500"} /> Discipline Checks
-          </h3>
-          <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest mb-5">Diet followed. No alcohol. Photo taken.</p>
-          
-          <div className="grid grid-cols-2 gap-3">
-            <button 
-              onClick={() => updateLog({ diet: !log?.diet })} 
-              className={`py-4 rounded-2xl border transition-all font-black text-[10px] uppercase tracking-widest active:scale-95 flex flex-col items-center justify-center gap-2 ${
-                log?.diet ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30" : "bg-neutral-950 text-neutral-400 border-neutral-800 hover:border-emerald-500/50"
-              }`}
-            >
-              {log?.diet ? <CheckCircle size={20} /> : <div className="w-5 h-5 border-2 border-neutral-600 rounded-full" />} Diet Perfect
-            </button>
-            
-            <input type="file" accept="image/*" ref={fileInputRef} className="hidden" onChange={handlePhotoUpload} />
-            <button 
-              onClick={() => fileInputRef.current?.click()} 
-              disabled={isPhotoUploading} 
-              className={`py-4 rounded-2xl border transition-all font-black text-[10px] uppercase tracking-widest active:scale-95 flex flex-col items-center justify-center gap-2 ${
-                log?.photoStorageId ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30" : "bg-neutral-950 text-neutral-400 border-neutral-800 hover:border-emerald-500/50"
-              }`}
-            >
-              {isPhotoUploading ? (
-                <span className="animate-pulse flex flex-col items-center gap-2"><Camera size={20} /> Uploading...</span>
-              ) : log?.photoUrl ? (
-                <><CheckCircle size={20} /> Photo Secured</>
-              ) : (
-                <><Camera size={20} className="text-neutral-500" /> Upload Photo</>
-              )}
+        {dailyHabits.length === 0 && weeklyHabits.length === 0 && (
+          <div className="text-center py-12 border border-dashed border-neutral-800 rounded-3xl">
+            <p className="text-neutral-500 font-bold uppercase tracking-widest text-sm mb-4">No active habits</p>
+            <button className="px-6 py-3 bg-emerald-500 text-neutral-950 font-black uppercase tracking-widest rounded-full text-xs">
+              Configure Protocol
             </button>
           </div>
-        </div>
-
+        )}
       </div>
 
       <AnimatePresence>
         {settingsOpen && <SettingsModal user={user} onClose={() => setSettingsOpen(false)} />}
       </AnimatePresence>
+    </div>
+  );
+}
 
-      <AnimatePresence>
-        {workoutPanelOpen && <WorkoutModal user={user} type={workoutPanelOpen} onClose={() => setWorkoutPanelOpen(null)} />}
-      </AnimatePresence>
+function HabitCard({ habit, status, logHabit }: { habit: any, status: any, logHabit: any }) {
+  const isMet = status.met;
+  
+  return (
+    <div className={`p-5 rounded-[24px] border backdrop-blur-md transition-all ${isMet ? 'bg-emerald-500/5 border-emerald-500/30' : 'bg-neutral-900/40 border-neutral-800'}`}>
+      <div className="flex justify-between items-start mb-4">
+        <div>
+          <h3 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2">
+            {habit.name}
+          </h3>
+          <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest mt-1">
+            Goal: {habit.goalDirection} {habit.goalValue} {habit.type === 'yes_no' ? '' : '(numeric)'}
+          </p>
+        </div>
+        {isMet && <CheckCircle size={20} className="text-emerald-500 drop-shadow-[0_0_8px_rgba(16,185,129,0.4)]" />}
+      </div>
+      
+      {habit.type === 'yes_no' && (
+        <button 
+          onClick={() => logHabit({ habitId: habit._id, completed: !status.entry?.completed })}
+          className={`w-full py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all active:scale-[0.98] ${
+            isMet ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-emerald-500 text-neutral-950 shadow-[0_0_20px_rgba(16,185,129,0.2)] hover:bg-emerald-400"
+          }`}
+        >
+          {isMet ? 'Completed' : 'Mark Complete'}
+        </button>
+      )}
+
+      {habit.type === 'numeric' && (
+        <form onSubmit={(e) => {
+          e.preventDefault();
+          const fd = new FormData(e.currentTarget);
+          const val = Number(fd.get("val"));
+          const current = status.entry?.numericValue || 0;
+          logHabit({ habitId: habit._id, completed: true, numericValue: current + val });
+          e.currentTarget.reset();
+        }} className="flex gap-2">
+           <div className="flex-1 flex items-baseline gap-2 bg-neutral-950 border border-neutral-800 rounded-2xl px-4 py-3">
+             <span className="text-2xl font-black text-white">{status.entry?.numericValue || 0}</span>
+             <span className="text-xs font-bold text-neutral-500">/ {habit.goalValue}</span>
+           </div>
+           <input type="number" name="val" required defaultValue={habit.goalValue} className="w-20 bg-neutral-950 border border-neutral-800 rounded-2xl px-2 text-center text-white font-bold" />
+           <button type="submit" className={`px-4 rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all ${
+             isMet ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-emerald-500 text-neutral-950 hover:bg-emerald-400'
+           }`}>Log</button>
+        </form>
+      )}
+
+      {habit.type === 'likert' && (
+        <div className="flex gap-2 justify-between">
+          {[1,2,3,4,5].map(v => (
+            <button key={v} onClick={() => logHabit({ habitId: habit._id, completed: true, likertValue: v })}
+              className={`flex-1 py-3 rounded-xl font-bold transition-all ${status.entry?.likertValue === v ? 'bg-emerald-500 text-neutral-950' : 'bg-neutral-950 border border-neutral-800 text-neutral-400 hover:border-emerald-500/50'}`}>
+              {v}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -47,21 +47,33 @@ export default defineSchema({
     userId: v.id("users"),
     challengeId: v.id("challenges"),
     date: v.string(), 
-    workout1: v.object({
+    
+    // Legacy 75 Hard fields (made optional for backward compatibility)
+    workout1: v.optional(v.object({
       done: v.boolean(),
       notes: v.string(),
       cals: v.number(),
-    }),
-    workout2: v.object({
+    })),
+    workout2: v.optional(v.object({
       done: v.boolean(),
       notes: v.string(),
       cals: v.number(),
-    }),
-    waterTotal: v.number(),
-    readingTotal: v.number(),
-    diet: v.boolean(),
+    })),
+    waterTotal: v.optional(v.number()),
+    readingTotal: v.optional(v.number()),
+    diet: v.optional(v.boolean()),
     photoStorageId: v.optional(v.id("_storage")), 
-    qAndA: v.array(v.object({ question: v.string(), answer: v.string() })),
+    
+    // New Flexible Habits System
+    habitEntries: v.optional(v.array(v.object({
+      habitId: v.id("habits"),
+      completed: v.boolean(),
+      numericValue: v.optional(v.number()),
+      likertValue: v.optional(v.number()),
+      note: v.optional(v.string()),
+    }))),
+
+    qAndA: v.optional(v.array(v.object({ question: v.string(), answer: v.string() }))),
     reactions: v.optional(v.array(v.string())), 
     status: v.union(
       v.literal("on_time"),
@@ -99,4 +111,71 @@ export default defineSchema({
     aiSummary: v.string(), 
     visualTheme: v.string(),
   }).index("by_user_and_challenge", ["userId", "challengeId"]),
+
+  // NEW: Custom Habits Architecture
+  habits: defineTable({
+    creatorId: v.optional(v.id("users")), 
+    name: v.string(),
+    type: v.union(v.literal("yes_no"), v.literal("numeric"), v.literal("likert")),
+    goalValue: v.number(),
+    goalDirection: v.union(v.literal(">="), v.literal("<="), v.literal("==")),
+    frequency: v.union(v.literal("daily"), v.literal("specific_days"), v.literal("weekly")),
+    daysOfWeek: v.optional(v.array(v.number())), // 0-6 for specific_days (0=Sun)
+  }).index("by_creator", ["creatorId"]),
+
+  userHabits: defineTable({
+    userId: v.id("users"),
+    habitId: v.id("habits"),
+    isActive: v.boolean(),
+    challengeId: v.optional(v.id("challenges")),
+  }).index("by_user", ["userId"]),
+
+  // NEW: The Expedition Architecture
+  expeditions: defineTable({
+    groupId: v.string(), // Links to squadId
+    groupName: v.string(),
+    totalTargetMiles: v.number(),
+    currentCollectiveMiles: v.number(),
+    currentNodeId: v.string(),
+    status: v.union(v.literal("active"), v.literal("decision_pending"), v.literal("completed")),
+    activeVote: v.optional(v.object({
+      nodeId: v.string(),
+      expiresAt: v.string(),
+      votes: v.array(v.object({ userId: v.string(), optionId: v.string() })),
+    })),
+  }).index("by_group", ["groupId"]),
+
+  expeditionMembers: defineTable({
+    expeditionId: v.id("expeditions"),
+    userId: v.id("users"),
+    role: v.union(v.literal("full_marathon"), v.literal("half_marathon")),
+    individualMilesLogged: v.number(),
+    hasUnlockedOrbitalBeacon: v.boolean(),
+  }).index("by_expedition", ["expeditionId"]),
+
+  narrativeNodes: defineTable({
+    expeditionId: v.id("expeditions"),
+    title: v.string(),
+    narrativeText: v.string(),
+    mileageMarker: v.number(),
+    isDecisionNode: v.boolean(),
+    options: v.optional(v.array(v.object({
+      id: v.string(),
+      label: v.string(),
+      description: v.string(),
+      requiredGroupMiles: v.number(),
+      nextNodeId: v.string(),
+    }))),
+    targetAudience: v.union(v.literal("all"), v.literal("full_marathoners_only"), v.literal("half_marathoner_peak")),
+    cleared: v.boolean(),
+  }).index("by_expedition", ["expeditionId"]),
+
+  expeditionRunLogs: defineTable({
+    expeditionId: v.id("expeditions"),
+    userId: v.id("users"),
+    miles: v.number(),
+    workoutType: v.union(v.literal("tempo"), v.literal("marathon_pace"), v.literal("easy"), v.literal("long_run"), v.literal("rest")),
+    timestamp: v.string(),
+    note: v.optional(v.string()),
+  }).index("by_expedition", ["expeditionId"]),
 });
