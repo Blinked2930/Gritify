@@ -22,6 +22,7 @@ export default defineSchema({
     // NEW: Squad Admin Architecture
     squadId: v.optional(v.string()), 
     isSquadAdmin: v.optional(v.boolean()),
+    partnerId: v.optional(v.string()), // Legacy field for backwards compatibility
     
     privacySettings: v.optional(
       v.object({
