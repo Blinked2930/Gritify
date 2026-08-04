@@ -9,6 +9,7 @@
  */
 
 import type * as auth from "../auth.js";
+import type * as conquest from "../conquest.js";
 import type * as expeditions from "../expeditions.js";
 import type * as logs from "../logs.js";
 import type * as logs_internal from "../logs_internal.js";
@@ -25,6 +26,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
+  conquest: typeof conquest;
   expeditions: typeof expeditions;
   logs: typeof logs;
   logs_internal: typeof logs_internal;

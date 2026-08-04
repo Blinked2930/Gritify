@@ -326,9 +326,9 @@ export const updateLog = mutation({
         ...(args.readingTotal !== undefined && { readingTotal: args.readingTotal }),
         ...(args.diet !== undefined && { diet: args.diet }),
         ...(args.workout1 !== undefined ? { workout1: { done: args.workout1.done, notes: args.workout1.notes || "", cals: args.workout1.cals || 0 } } : 
-           args.workout1Done !== undefined ? { workout1: { ...existingLog.workout1, done: args.workout1Done ?? false } } : {}),
+           args.workout1Done !== undefined ? { workout1: { notes: "", cals: 0, ...(existingLog.workout1 || {}), done: args.workout1Done ?? false } } : {}),
         ...(args.workout2 !== undefined ? { workout2: { done: args.workout2.done, notes: args.workout2.notes || "", cals: args.workout2.cals || 0 } } : 
-           args.workout2Done !== undefined ? { workout2: { ...existingLog.workout2, done: args.workout2Done ?? false } } : {}),
+           args.workout2Done !== undefined ? { workout2: { notes: "", cals: 0, ...(existingLog.workout2 || {}), done: args.workout2Done ?? false } } : {}),
         ...(args.photoStorageId !== undefined && { photoStorageId: args.photoStorageId }),
         ...(args.qAndA !== undefined && { qAndA: args.qAndA }),
       });

@@ -17,8 +17,8 @@ export const gatherWrappedData = internalQuery({
     let combinedVaultNotes = "";
 
     for (const log of logs) {
-      totalWater += log.waterTotal;
-      totalPages += log.readingTotal;
+      totalWater += (log.waterTotal || 0);
+      totalPages += (log.readingTotal || 0);
       
       if (log.qAndA && log.qAndA.length > 0) {
         combinedVaultNotes += `\nDay ${log.date}:\n`;

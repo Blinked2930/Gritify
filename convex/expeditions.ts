@@ -188,7 +188,7 @@ export const processRunLog = mutation({
     // Sort by mileage to unlock in order
     nodes.sort((a, b) => a.mileageMarker - b.mileageMarker);
 
-    let status = expedition.status;
+    let status: "active" | "completed" | "decision_pending" = expedition.status;
     let activeVote = expedition.activeVote;
 
     for (const node of nodes) {
