@@ -140,8 +140,8 @@ function DashboardMain({ user }: { user: any }) {
             <Link href="/stats" className="h-10 px-4 rounded-full bg-neutral-900 border border-neutral-800 flex items-center justify-center text-emerald-500 font-bold text-xs gap-2 transition-all hover:bg-emerald-500/10 hover:border-emerald-500/50 active:scale-95 shadow-sm">
               <Users size={16} /> <span className="hidden sm:inline">SQUAD</span>
             </Link>
-            <Link href="/expedition" className="h-10 px-4 rounded-full bg-red-900/20 border border-red-500/50 flex items-center justify-center text-red-500 font-bold text-xs gap-2 transition-all hover:bg-red-500/10 hover:border-red-500 active:scale-95 shadow-sm">
-              <Activity size={16} /> <span className="hidden sm:inline">EXPEDITION</span>
+            <Link href="/conquest" className="h-10 px-4 rounded-full bg-red-900/20 border border-red-500/50 flex items-center justify-center text-red-500 font-bold text-xs gap-2 transition-all hover:bg-red-500/10 hover:border-red-500 active:scale-95 shadow-sm">
+              <Activity size={16} /> <span className="hidden sm:inline">CONQUEST</span>
             </Link>
           </div>
         </div>

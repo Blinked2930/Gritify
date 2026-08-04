@@ -170,12 +170,36 @@ export default defineSchema({
     cleared: v.boolean(),
   }).index("by_expedition", ["expeditionId"]),
 
+  // NEW: The Conquest Architecture (Replaces Expeditions)
+  conquestCampaigns: defineTable({
+    groupId: v.string(), // Links to squadId
+    squadName: v.string(),
+    active: v.boolean(),
+    houses: v.array(v.object({
+      houseId: v.string(),
+      squadConquered: v.boolean(),
+      memberProgress: v.array(v.object({
+        userId: v.string(),
+        targetMiles: v.number(),
+        currentMiles: v.number(),
+        completed: v.boolean(),
+      }))
+    })),
+  }).index("by_group", ["groupId"]),
+
+  // Legacy Expedition Run Logs (Repurposed)
   expeditionRunLogs: defineTable({
-    expeditionId: v.id("expeditions"),
+    expeditionId: v.optional(v.id("expeditions")), // Optional now, since conquest uses campaignId
+    campaignId: v.optional(v.id("conquestCampaigns")), // New field
     userId: v.id("users"),
     miles: v.number(),
-    workoutType: v.union(v.literal("tempo"), v.literal("marathon_pace"), v.literal("easy"), v.literal("long_run"), v.literal("rest")),
+    workoutType: v.union(
+      // Legacy
+      v.literal("tempo"), v.literal("marathon_pace"), v.literal("easy"), v.literal("long_run"), v.literal("rest"),
+      // New modular categories
+      v.literal("speed_intervals"), v.literal("easy_tier_1"), v.literal("easy_tier_2"), v.literal("easy_tier_3"), v.literal("long_run_tier_1"), v.literal("long_run_tier_2")
+    ),
     timestamp: v.string(),
     note: v.optional(v.string()),
-  }).index("by_expedition", ["expeditionId"]),
+  }).index("by_expedition", ["expeditionId"]).index("by_campaign", ["campaignId"]),
 });
